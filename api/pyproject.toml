@@ -1,0 +1,17 @@
+# Tool settings only; dependencies are in requirements*.txt (plain pip, no build step needed).
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+# E/F: pycodestyle + pyflakes, I: import order, B: common bugs, UP: modern Python syntax
+select = ["E", "F", "I", "B", "UP"]
+# FastAPI's Depends()/File()/Query() in argument defaults are the documented pattern
+ignore = ["B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
