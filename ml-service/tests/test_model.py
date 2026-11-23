@@ -123,17 +123,30 @@ def test_low_confidence_is_not_sure(robust_clf):
     assert len(r["top3"]) == 3  # the UI offers these three to choose from
 
 
-def test_zoom_winner_is_used_and_never_marked_unsure(robust_clf, monkeypatch):
+def test_zoom_winner_is_used(cnn_clf, monkeypatch):
     """notebook 02's rule: if zoom search finds a crop the model is surer about, use it."""
     sure = np.zeros(len(CLASS_NAMES), dtype="float32")
-    sure[CLASS_NAMES.index("metal")] = 0.97
+    sure[CLASS_NAMES.index("metal")] = 0.999
     crop = np.full((FAKE_IMG_SIZE, FAKE_IMG_SIZE, 3), 200, dtype=np.uint8)
     monkeypatch.setattr(model_module, "zoom_search", lambda model, im: (sure, (10, 5, 50, 45), crop))
 
-    r = robust_clf.classify(a_photo(), zoom=True)
+    r = cnn_clf.classify(a_photo(120, 90), zoom=True)
     assert r["zoomed"] is True
     assert r["crop_box"] == [10, 5, 50, 45]
-    assert r["unsure"] is False  # even though the fake robust model is never confident
+    assert r["unsure"] is False  # the fake cnn model is confident on any crop
+
+
+def test_zoomed_answer_below_the_threshold_is_still_not_sure(robust_clf, monkeypatch):
+    """Milestone 2 decision (docs/decisions.md): unlike notebook 02, a zoomed answer below the threshold
+    stays "not sure". The zoomed confidence is already the best of ~20 crops."""
+    better = np.full(len(CLASS_NAMES), 0.2, dtype="float32")  # beats the plain crop, still below 0.55
+    crop = np.full((FAKE_IMG_SIZE, FAKE_IMG_SIZE, 3), 200, dtype=np.uint8)
+    monkeypatch.setattr(model_module, "zoom_search", lambda model, im: (better, (10, 5, 50, 45), crop))
+
+    r = robust_clf.classify(a_photo(), zoom=True)
+    assert r["zoomed"] is True
+    assert r["confidence"] < robust_clf.threshold
+    assert r["unsure"] is True
 
 
 def test_zoom_loser_falls_back_to_the_centre_crop(cnn_clf, monkeypatch):
