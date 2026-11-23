@@ -28,8 +28,8 @@ export interface BinInfo {
   holds: string;
   /** Where to take it */
   where: string;
-  color: string; // solid colour (badges, icons)
-  tint: string; // light background
+  /** CSS class that sets --bin to this bin's colour token (site.css) */
+  cls: string;
   icon: LucideIcon;
 }
 
@@ -38,56 +38,49 @@ export const BINS: Record<string, BinInfo> = {
     title: "Blue bin",
     holds: "Paper & cardboard",
     where: "Blue recycling bin, or a recycling buy-back centre.",
-    color: "var(--color-bin-blue)",
-    tint: "#e6eefa",
+    cls: "bin-blue",
     icon: Newspaper,
   },
   "brown bin": {
     title: "Brown bin",
     holds: "Glass bottles & jars",
     where: "Brown recycling bin, or a recycling buy-back centre.",
-    color: "var(--color-bin-brown)",
-    tint: "#f3ebe2",
+    cls: "bin-brown",
     icon: Wine,
   },
   "orange bin": {
     title: "Orange bin",
     holds: "Plastic, aluminium & metal cans",
     where: "Orange recycling bin, or a recycling buy-back centre.",
-    color: "var(--color-bin-orange)",
-    tint: "#fcefe3",
+    cls: "bin-orange",
     icon: CupSoda,
   },
   "e-waste collection": {
     title: "E-waste collection",
     holds: "Batteries & electronics",
     where: "An e-waste collection point (many malls, councils and electronics shops have one). Never a household bin.",
-    color: "var(--color-bin-ewaste)",
-    tint: "#f8e6ed",
+    cls: "bin-ewaste",
     icon: Zap,
   },
   "textile donation": {
     title: "Textile donation",
     holds: "Clothes, shoes & fabric",
     where: "A clothes donation bin, charity shop or textile recycling bin.",
-    color: "var(--color-bin-textile)",
-    tint: "#e2f2f2",
+    cls: "bin-textile",
     icon: Shirt,
   },
   "food waste": {
     title: "Food waste",
     holds: "Food scraps & garden waste",
     where: "Home or community compost if you have one; otherwise wrap it and put it in general waste.",
-    color: "var(--color-bin-food)",
-    tint: "#ebf2e2",
+    cls: "bin-food",
     icon: Leaf,
   },
   "general waste": {
     title: "General waste",
     holds: "Not recyclable as it is",
     where: "Your normal household rubbish bin.",
-    color: "var(--color-bin-general)",
-    tint: "#eceef1",
+    cls: "bin-general",
     icon: Trash2,
   },
 };
@@ -96,8 +89,7 @@ export const UNKNOWN_BIN: BinInfo = {
   title: "Check locally",
   holds: "Not sure where this goes",
   where: "Ask your local recycling centre or council.",
-  color: "var(--color-ink-soft)",
-  tint: "#eeebe3",
+  cls: "bin-general",
   icon: Recycle,
 };
 

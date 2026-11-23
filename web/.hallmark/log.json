@@ -1,0 +1,30 @@
+[
+ {
+  "mode": "redesign",
+  "depth": "full",
+  "scope": "site",
+  "shape": "Narrative Workflow",
+  "theme": "editorial",
+  "axes": "light/display-condensed/chromatic-green",
+  "hero": "Ledge",
+  "nav": "edge-aligned over a heavy ink rule",
+  "footer": "letter close",
+  "imagery": "screenshots 4 (capture of the app in its own states)",
+  "photos": [],
+  "entry": "stages",
+  "fingerprint": "Numbered by structure|Asymmetric spans|Hairline|Solid|Tightly cropped to the grid|None",
+  "sections": [
+   "Hero (Ledge, two app captures)",
+   "Showcase (picker capture)",
+   "Margin notes (top-3 capture)",
+   "Rows (seven bins)",
+   "Well: Statement + head block",
+   "Ink band: statement + two figures",
+   "Close statement"
+  ],
+  "signature": "the answer block in the bin colour",
+  "waived": [],
+  "prompt": "A recycling helper for Malaysian households: photograph an item at home and learn which recycling bin it goes in and how to prepare it",
+  "date": "2026-11-23"
+ }
+]

@@ -2,7 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { Heart, ScanLine } from "lucide-react";
 
 import { BinBadge } from "../components/BinBadge";
-import { Button, ButtonLink, Card, ErrorNote, Eyebrow, Spinner } from "../components/ui";
+import { Button, ButtonLink, ErrorNote, Spinner } from "../components/ui";
 import { api } from "../lib/api";
 import { useMe, useModelInfo } from "../lib/hooks";
 import { percent } from "../lib/image";
@@ -14,10 +14,10 @@ export function HistoryPage() {
   if (isPending) return <Spinner label="Loading…" />;
   if (!me) {
     return (
-      <div className="mx-auto max-w-md px-4 py-20 text-center">
-        <h1 className="text-3xl font-extrabold">Your scans live here</h1>
-        <p className="mt-2 text-ink-soft">Log in to see everything you've scanned and labelled.</p>
-        <div className="mt-8 flex justify-center gap-3">
+      <div className="container gone">
+        <h1>Your scans live here</h1>
+        <p className="lead">Log in to see everything you’ve scanned and labelled.</p>
+        <div className="actions">
           <ButtonLink to="/login?next=/me">Log in</ButtonLink>
           <ButtonLink to="/signup?next=/me" variant="secondary">
             Sign up
@@ -27,9 +27,10 @@ export function HistoryPage() {
     );
   }
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
-      <Eyebrow>My scans</Eyebrow>
-      <h1 className="mt-2 text-4xl font-extrabold sm:text-5xl">Hi {me.display_name}</h1>
+    <div className="container app">
+      <header className="app__head">
+        <h1>Hi {me.display_name}</h1>
+      </header>
       <Summary />
       <ScanList />
     </div>
@@ -40,33 +41,35 @@ function Summary() {
   const { data } = useQuery({ queryKey: ["scans", "summary"], queryFn: api.summary });
   if (!data || data.total === 0) return null;
   return (
-    <section className="mt-8 grid gap-3 sm:grid-cols-3">
-      <Card className="p-5">
-        <p className="text-sm font-semibold text-ink-soft">Items scanned</p>
-        <p className="mt-1 font-display text-4xl font-extrabold">{data.total}</p>
-        <p className="mt-1 text-xs text-ink-soft">{data.labelled} confirmed or corrected by you</p>
-      </Card>
-      <Card className="p-5 sm:col-span-2">
-        <p className="text-sm font-semibold text-ink-soft">Where they went</p>
-        <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-paper-deep">
+    <dl className="summary">
+      <div>
+        <dt>Items scanned</dt>
+        <dd className="figure-num">{data.total}</dd>
+        <dd>{data.labelled} confirmed or corrected by you</dd>
+      </div>
+      <div>
+        <dt>Where they went</dt>
+        <dd className="binbar" aria-hidden>
           {data.by_bin.map((b) => (
-            <div
+            <span
               key={b.bin}
+              className={binInfo(b.bin).cls}
               title={`${binInfo(b.bin).title}: ${b.count}`}
-              style={{ width: `${(b.count / data.total) * 100}%`, backgroundColor: binInfo(b.bin).color }}
+              style={{ flexGrow: b.count }}
             />
           ))}
-        </div>
-        <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
-          {data.by_bin.map((b) => (
-            <li key={b.bin} className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full" style={{ backgroundColor: binInfo(b.bin).color }} />
-              {binInfo(b.bin).title} <span className="text-ink-soft">{b.count}</span>
-            </li>
-          ))}
-        </ul>
-      </Card>
-    </section>
+        </dd>
+        <dd>
+          <ul className="binlegend">
+            {data.by_bin.map((b) => (
+              <li key={b.bin}>
+                <BinBadge bin={b.bin} /> <span className="muted">{b.count}</span>
+              </li>
+            ))}
+          </ul>
+        </dd>
+      </div>
+    </dl>
   );
 }
 
@@ -82,24 +85,24 @@ function ScanList() {
   const items = scans.data.pages.flatMap((p) => p.items);
   if (items.length === 0) {
     return (
-      <Card className="mt-8 p-10 text-center">
-        <p className="text-lg font-semibold">No scans yet</p>
-        <p className="mt-1 text-sm text-ink-soft">Scan your first item to start your history.</p>
-        <ButtonLink to="/scan" className="mt-6">
-          <ScanLine className="size-4" aria-hidden /> Scan an item
+      <div className="gone">
+        <h2>No scans yet</h2>
+        <p>Scan your first item to start your history.</p>
+        <ButtonLink to="/scan">
+          <ScanLine size={18} aria-hidden /> Scan an item
         </ButtonLink>
-      </Card>
+      </div>
     );
   }
   return (
-    <section className="mt-8">
-      <ul className="divide-y divide-line/70 overflow-hidden rounded-3xl border border-line/70 bg-white shadow-card">
+    <section>
+      <ul className="scanlist">
         {items.map((s) => (
           <ScanRow key={s.id} scan={s} />
         ))}
       </ul>
       {scans.hasNextPage && (
-        <div className="mt-4 text-center">
+        <div className="more-rows">
           <Button variant="secondary" onClick={() => scans.fetchNextPage()} busy={scans.isFetchingNextPage}>
             Show older scans
           </Button>
@@ -123,34 +126,29 @@ function ScanRow({ scan }: { scan: Scan }) {
   const when = new Date(scan.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
   return (
-    <li className="flex flex-wrap items-center gap-4 px-5 py-4">
-      <span className="grid size-11 place-items-center rounded-2xl" style={{ backgroundColor: binInfo(bin).tint }}>
-        <info.icon className="size-5" style={{ color: binInfo(bin).color }} aria-hidden />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="font-semibold">
+    <li>
+      <div>
+        <h3>
           {label === OTHER_LABEL ? "Something else" : info.name}
           {label && label !== scan.predicted_class && (
-            <span className="ml-2 text-xs font-normal text-ink-soft">
-              (model said {classInfo(scan.predicted_class).name.toLowerCase()})
-            </span>
+            <small>model said {classInfo(scan.predicted_class).name.toLowerCase()}</small>
           )}
-        </p>
-        <p className="text-xs text-ink-soft">
-          {when} · {scan.unsure && !label ? "model not sure" : `${percent(scan.confidence)} sure`}
+        </h3>
+        <p>
+          <time dateTime={scan.created_at}>{when}</time>, {scan.unsure && !label ? "model not sure" : `${percent(scan.confidence)} sure`}
         </p>
       </div>
       {bin && <BinBadge bin={bin} />}
       {scan.photo_donated && (
-        <button
-          type="button"
+        <Button
+          variant="quiet"
+          small
           onClick={() => deletePhoto.mutate()}
           disabled={deletePhoto.isPending}
-          className="inline-flex items-center gap-1 text-xs text-ink-soft underline hover:text-ink disabled:opacity-50"
           title="Delete the donated photo"
         >
-          <Heart className="size-3.5 text-bin-ewaste" aria-hidden /> Delete donated photo
-        </button>
+          <Heart size={16} aria-hidden /> Delete donated photo
+        </Button>
       )}
     </li>
   );

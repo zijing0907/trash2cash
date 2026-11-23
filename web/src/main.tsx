@@ -1,3 +1,4 @@
+import "./stamp.css";
 import "./styles.css";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

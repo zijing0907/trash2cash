@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
-import { Button, Card, ErrorNote } from "../components/ui";
+import { Button, ErrorNote } from "../components/ui";
 import { api } from "../lib/api";
 import type { User } from "../lib/types";
 
@@ -31,8 +31,8 @@ function Field(props: {
   minLength?: number;
 }) {
   return (
-    <label className="block">
-      <span className="text-sm font-semibold">{props.label}</span>
+    <label className="field">
+      <span>{props.label}</span>
       <input
         required
         type={props.type}
@@ -41,19 +41,21 @@ function Field(props: {
         value={props.value}
         minLength={props.minLength}
         onChange={(e) => props.onChange(e.target.value)}
-        className="mt-1.5 w-full rounded-xl border border-line bg-white px-4 py-3 outline-none transition focus:border-leaf-400 focus:ring-4 focus:ring-leaf-100"
+        className="input"
       />
-      {props.hint && <span className="mt-1 block text-xs text-ink-soft">{props.hint}</span>}
+      {props.hint && <small className="field__help">{props.hint}</small>}
     </label>
   );
 }
 
 function AuthLayout({ title, sub, children }: { title: string; sub: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="mx-auto max-w-md px-4 py-12 sm:py-20">
-      <h1 className="text-center text-4xl font-extrabold">{title}</h1>
-      <p className="mt-2 text-center text-ink-soft">{sub}</p>
-      <Card className="mt-8 p-6 sm:p-8">{children}</Card>
+    <div className="container auth">
+      <div className="auth__intro">
+        <h1>{title}</h1>
+        <p className="lead">{sub}</p>
+      </div>
+      {children}
     </div>
   );
 }
@@ -71,14 +73,14 @@ export function LoginPage() {
       sub={
         <>
           New here?{" "}
-          <Link to={`/signup?${params}`} className="font-semibold text-leaf-700 hover:underline">
+          <Link to={`/signup?${params}`} className="link">
             Create an account
           </Link>
         </>
       }
     >
       <form
-        className="space-y-4"
+        className="form"
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
           login.mutate();
@@ -94,7 +96,7 @@ export function LoginPage() {
           onChange={setPassword}
         />
         {login.error && <ErrorNote>{login.error.message}</ErrorNote>}
-        <Button type="submit" size="lg" className="w-full" busy={login.isPending}>
+        <Button type="submit" busy={login.isPending}>
           Log in
         </Button>
       </form>
@@ -116,14 +118,14 @@ export function SignupPage() {
       sub={
         <>
           Keep a history of your scans. Already have an account?{" "}
-          <Link to={`/login?${params}`} className="font-semibold text-leaf-700 hover:underline">
+          <Link to={`/login?${params}`} className="link">
             Log in
           </Link>
         </>
       }
     >
       <form
-        className="space-y-4"
+        className="form"
         onSubmit={(e: FormEvent) => {
           e.preventDefault();
           signup.mutate();
@@ -142,7 +144,7 @@ export function SignupPage() {
           hint="At least 8 characters."
         />
         {signup.error && <ErrorNote>{signup.error.message}</ErrorNote>}
-        <Button type="submit" size="lg" className="w-full" busy={signup.isPending}>
+        <Button type="submit" busy={signup.isPending}>
           Create account
         </Button>
       </form>
