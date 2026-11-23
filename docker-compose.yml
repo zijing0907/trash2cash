@@ -1,7 +1,52 @@
-# Runs the app locally with one command:  docker compose up --build
-# Settings come from .env (copy .env.example). Milestone 1 has only the ML service;
-# PostgreSQL, the API and the web app are added in Milestone 2.
+# Runs the whole app locally with one command:  docker compose up --build
+# Then open http://localhost:8080. Settings come from .env (copy .env.example).
+#
+#   browser ─► web (nginx: web app + /api proxy) ─► api (FastAPI) ─► db (PostgreSQL)
+#                                                               └─► ml-service (TensorFlow)
 services:
+  web:
+    build: ./web
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+  api:
+    build: ./api
+    environment:
+      DATABASE_URL: postgresql+psycopg://trash2cash:${POSTGRES_PASSWORD:-trash2cash}@db:5432/trash2cash
+      ML_SERVICE_URL: http://ml-service:8001
+      SECRET_KEY: ${SECRET_KEY:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      TRUST_PROXY: "true" # only nginx (the web service) can reach the API
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-8}
+      SCAN_RATE_PER_MIN: ${SCAN_RATE_PER_MIN:-20}
+    volumes:
+      - media:/data/media # photos users chose to donate
+    depends_on:
+      db:
+        condition: service_healthy
+      ml-service:
+        condition: service_started # the API copes while the model is still loading (503 + clear message)
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: trash2cash
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trash2cash}
+      POSTGRES_DB: trash2cash
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trash2cash -d trash2cash"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
   ml-service:
     build: ./ml-service
     environment:
@@ -10,5 +55,9 @@ services:
       MAX_IMAGE_MEGAPIXELS: ${MAX_IMAGE_MEGAPIXELS:-60}
       INFERENCE_TIMEOUT_S: ${INFERENCE_TIMEOUT_S:-30}
     ports:
-      - "${ML_SERVICE_PORT:-8001}:8001"
+      - "${ML_SERVICE_PORT:-8001}:8001" # for trying the model directly at /docs; the app goes through the API
     restart: unless-stopped
+
+volumes:
+  pgdata:
+  media:

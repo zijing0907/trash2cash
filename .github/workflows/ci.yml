@@ -1,5 +1,5 @@
-# Runs on every push and pull request. Milestone 1: the ML service only.
-# The api/ and web/ jobs (ruff, eslint, type-check, pytest, vitest) are added when those folders get code.
+# Runs on every push and pull request: lint, type checks and tests for every service,
+# migrations against a real PostgreSQL, and a build of every Docker image.
 name: CI
 
 on:
@@ -30,10 +30,80 @@ jobs:
         # The parity test is skipped until tests/fixtures/golden.json and the model files are in the repo
         run: pytest
 
-  ml-service-docker:
-    name: ml-service Docker image builds
+  api:
+    name: api lint + migrations + tests (PostgreSQL)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: trash2cash
+          POSTGRES_PASSWORD: trash2cash
+          POSTGRES_DB: trash2cash
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U trash2cash" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://trash2cash:trash2cash@localhost:5432/trash2cash
+      TEST_DATABASE_URL: postgresql+psycopg://trash2cash:trash2cash@localhost:5432/trash2cash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: api/requirements*.txt
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Lint (ruff)
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Migrations apply, roll back, and match the models
+        run: |
+          alembic upgrade head
+          alembic check
+          alembic downgrade base
+          alembic upgrade head
+      - name: Tests (pytest, on SQLite and on PostgreSQL)
+        run: |
+          TEST_DATABASE_URL= pytest
+          pytest
+
+  web:
+    name: web lint + types + tests + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Lint (eslint)
+        run: npm run lint
+      - name: Type check (tsc)
+        run: npm run typecheck
+      - name: Tests (vitest)
+        run: npm test
+      - name: Build
+        run: npx vite build
+
+  docker:
+    name: Docker image builds (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [ml-service, api, web]
     steps:
       - uses: actions/checkout@v7
       - name: Build image
-        run: docker build -t trash2cash-ml ml-service
+        run: docker build -t trash2cash-${{ matrix.service }} ${{ matrix.service }}
