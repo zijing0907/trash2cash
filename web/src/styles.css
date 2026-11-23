@@ -1,0 +1,75 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/bricolage-grotesque";
+
+/* Design tokens. Colours of the Malaysian recycling bins (blue = paper, brown = glass,
+   orange = plastic and metal) are the backbone of the visual language. */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque Variable", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+
+  --color-paper: #f7f4ec;
+  --color-paper-deep: #ede6d6;
+  --color-ink: #16241c;
+  --color-ink-soft: #4b5b51;
+  --color-line: #ddd5c4;
+
+  --color-leaf-50: #eef8f0;
+  --color-leaf-100: #d6efdc;
+  --color-leaf-200: #addfba;
+  --color-leaf-300: #7cc791;
+  --color-leaf-400: #4dab68;
+  --color-leaf-500: #2f8f4e;
+  --color-leaf-600: #23733e;
+  --color-leaf-700: #1d5c33;
+  --color-leaf-800: #194a2b;
+  --color-leaf-900: #123620;
+
+  --color-bin-blue: #1f5fbf;
+  --color-bin-brown: #8a5a2b;
+  --color-bin-orange: #dd6b12;
+  --color-bin-ewaste: #b0285e;
+  --color-bin-textile: #0e7c7e;
+  --color-bin-food: #5a8a2c;
+  --color-bin-general: #4b5563;
+
+  --shadow-card: 0 1px 0 rgb(22 36 28 / 0.04), 0 8px 24px -12px rgb(22 36 28 / 0.18);
+  --animate-rise: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-leaf-500;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
