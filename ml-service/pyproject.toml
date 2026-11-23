@@ -12,3 +12,7 @@ select = ["E", "F", "I", "B", "UP"]
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra"
+filterwarnings = [
+    # raised inside Keras (not our code) when it converts tensors with NumPy 2
+    "ignore:__array__ implementation doesn't accept a copy keyword:DeprecationWarning",
+]
