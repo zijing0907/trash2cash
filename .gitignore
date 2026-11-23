@@ -1,0 +1,30 @@
+# Secrets: copy .env.example to .env and fill it in; .env is never committed
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Node (web/ from Milestone 2)
+node_modules/
+dist/
+
+# Model export: the app serves only the CNN models. The FCNN (~50 MB) and the
+# zipped export stay out of git; best_cnn*.keras and meta.json are committed.
+ml-service/models/best_fcnn*.keras
+ml-service/models/*.zip
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,11 @@
+# Store text files with LF line endings, also when committed from Windows.
+# Shell scripts and Dockerfiles with CRLF endings break inside Linux containers.
+* text=auto eol=lf
+
+# Binary files: never touch line endings or try to diff them
+*.keras binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.heic binary
+*.webp binary
