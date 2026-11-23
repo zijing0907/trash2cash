@@ -3,7 +3,7 @@
 # (Lanczos resize, JPEG decoding). When golden.json arrives, these four are re-pinned to the
 # versions it records from Colab, so the service matches the notebooks.
 #
-# tensorflow-cpu has wheels for x86-64 (Intel/AMD) Linux; that is what Docker runs on Windows.
+# tensorflow-cpu has wheels for x86-64 (Intel/AMD) Linux and Windows; Docker on Windows uses the Linux one.
 tensorflow-cpu==2.21.0
 keras==3.15.1
 numpy==2.5.5
