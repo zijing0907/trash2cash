@@ -1,0 +1,5 @@
+# Extra tools for tests and linting (not installed in the Docker image)
+-r requirements.txt
+pytest==9.2.0
+httpx==0.28.1   # used by FastAPI's TestClient
+ruff==0.17.6

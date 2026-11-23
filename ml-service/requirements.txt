@@ -1,0 +1,15 @@
+# Runtime dependencies of the ML service, pinned so predictions are reproducible.
+# The model's numbers depend on tensorflow/keras/numpy, and the preprocessing on pillow
+# (Lanczos resize, JPEG decoding). When golden.json arrives, these four are re-pinned to the
+# versions it records from Colab, so the service matches the notebooks.
+#
+# tensorflow-cpu has wheels for x86-64 (Intel/AMD) Linux; that is what Docker runs on Windows.
+tensorflow-cpu==2.21.0
+keras==3.15.1
+numpy==2.5.5
+pillow==13.0.0
+pillow-heif==1.8.1      # iPhone HEIC photos
+matplotlib==3.11.2      # only for the "jet" colour map in the Grad-CAM overlay (same as notebook 02)
+fastapi==0.165.0
+uvicorn==0.54.0
+python-multipart==0.0.34  # lets FastAPI read file uploads (multipart/form-data)
