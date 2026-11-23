@@ -1,0 +1,39 @@
+# Runs on every push and pull request. Milestone 1: the ML service only.
+# The api/ and web/ jobs (ruff, eslint, type-check, pytest, vitest) are added when those folders get code.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ml-service:
+    name: ml-service lint + tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ml-service
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ml-service/requirements*.txt
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Lint (ruff)
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Tests (pytest)
+        # The parity test is skipped until tests/fixtures/golden.json and the model files are in the repo
+        run: pytest
+
+  ml-service-docker:
+    name: ml-service Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build image
+        run: docker build -t trash2cash-ml ml-service
