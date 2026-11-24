@@ -319,3 +319,24 @@ One entry per milestone: what was chosen, the alternatives, and why.
   name bins. Navigation follows the role: operators get Weigh-in, admins Weigh-in and Board.
 - The Hallmark render checks ran on these routes signed out (they cannot log in), so the signed-in screens were
   checked by driving the app as each demo role at desktop and phone size.
+
+## Phase 1: closing the gaps (24 Nov 2026)
+
+### 5.1 Vouchers are collected once
+- **Chose:** migration 0003 adds `used_at` and `used_by_id` to redemptions. Staff check a code at the weigh-in
+  screen (reward, member, when it was claimed) and hand it over; collecting is one `UPDATE ... WHERE used_at IS NULL`,
+  so showing the same code twice, or two staff pressing at once, collects it once. Residents see "Collected" in
+  My vouchers.
+
+### 5.2 Admins manage real drop-off points
+- **Chose:** Setup adds and edits points: name, address, map position (pasted as "lat, lng" from Google Maps or
+  OpenStreetMap), open or closed, and each bin with its size. A bin can be resized or added at any time, but one with
+  recorded deposits or pickups cannot be removed (its history would lose its place); close the point instead.
+  Closed points disappear for residents and from the board but keep their history.
+- A map to pick the position comes with the OpenStreetMap map in Phase 4.
+
+### 5.3 Times compared in UTC
+- **Fixed:** "today's deposits" and the board's day and month boundaries compared a Malaysian-midnight time with
+  stored times. PostgreSQL converted correctly; SQLite (the tests) stores times without a zone, so the comparison
+  broke just after midnight in Malaysia. Boundaries are now converted to UTC before comparing, and zone-less times
+  are read as UTC. Caught by the test suite running after midnight, Malaysian time.

@@ -188,11 +188,14 @@ function TeachAndDropOff() {
         </div>
         <div className="stage__head">
           <h2>
-            5. Drop off and earn <span className="tag">In development</span>
+            5. Drop off and earn
           </h2>
           <p>
             Operators weigh and verify deposits at drop-off points and you earn points. Admins see when each point
-            needs a pickup.
+            needs a pickup.{" "}
+            <Link to="/rewards" className="link">
+              See the rewards
+            </Link>
           </p>
         </div>
       </div>

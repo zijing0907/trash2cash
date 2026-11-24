@@ -1,7 +1,7 @@
 """The admin board: every bin's fill, its forecast, the pickup run, and this month's totals."""
 
 from collections import defaultdict
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
@@ -15,7 +15,8 @@ STATUS_ORDER = {"due": 0, "soon": 1, "later": 2, "idle": 3}
 
 
 def local_day_start(day: date, tz: ZoneInfo) -> datetime:
-    return datetime.combine(day, time.min, tzinfo=tz)
+    """Local midnight as a UTC time: stored times are UTC (SQLite keeps them without a zone)."""
+    return datetime.combine(day, time.min, tzinfo=tz).astimezone(UTC)
 
 
 def build_board(db: Session, tz: ZoneInfo, now: datetime) -> dict:
@@ -36,7 +37,7 @@ def build_board(db: Session, tz: ZoneInfo, now: datetime) -> dict:
         .join(DepositLine, DepositLine.deposit_id == Deposit.id)
         .where(Deposit.created_at >= since)
     ):
-        day = (created if created.tzinfo else created.replace(tzinfo=tz)).astimezone(tz).date()
+        day = (created if created.tzinfo else created.replace(tzinfo=UTC)).astimezone(tz).date()
         daily[(point_id, key)][day] += grams / 1000
 
     out_points = []

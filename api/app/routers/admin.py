@@ -4,15 +4,15 @@ from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import Session, selectinload
 
 from ..board import build_board
 from ..db import get_db
 from ..errors import api_error
-from ..models import Container, DropPoint, Pickup, Reward, Role, Stream, User
+from ..models import Container, Deposit, DepositLine, DropPoint, Pickup, Reward, Role, Stream, User
 from ..points import container_fill_g
-from ..schemas import PickupIn, RewardIn, RewardOut, RoleIn, StaffOut, StreamIn, StreamOut
+from ..schemas import DropPointAdmin, DropPointIn, PickupIn, RewardIn, RewardOut, RoleIn, StaffOut, StreamIn, StreamOut
 from ..security import require_role
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -106,3 +106,73 @@ def set_role(user_id: int, body: RoleIn, user: User = Depends(admin), db: Sessio
     target.drop_point_id = body.drop_point_id if body.role != Role.resident else None
     db.commit()
     return target
+
+
+def point_admin(p: DropPoint) -> dict:
+    return {
+        **{k: getattr(p, k) for k in ("id", "name", "address", "lat", "lng", "active", "is_demo")},
+        "bins": [
+            {"container_id": c.id, "stream_key": c.stream_key, "capacity_kg": c.capacity_kg} for c in p.containers
+        ],
+    }
+
+
+def apply_point(db: Session, point: DropPoint, body: DropPointIn) -> None:
+    keys = [b.stream_key for b in body.bins]
+    if len(set(keys)) != len(keys):
+        raise api_error(422, "duplicate_stream", "Each bin can appear once per drop-off point.")
+    known = set(db.scalars(select(Stream.key)))
+    if unknown := [k for k in keys if k not in known]:
+        raise api_error(422, "unknown_stream", f"Unknown bin: {unknown[0]}.")
+    point.name, point.address, point.lat, point.lng, point.active = (
+        body.name.strip(), body.address.strip(), body.lat, body.lng, body.active
+    )  # fmt: skip
+    wanted = {b.stream_key: b.capacity_kg for b in body.bins}
+    for c in list(point.containers):
+        if c.stream_key in wanted:
+            c.capacity_kg = wanted.pop(c.stream_key)
+            continue
+        used = db.scalar(
+            select(func.count(DepositLine.id))
+            .join(Deposit, Deposit.id == DepositLine.deposit_id)
+            .where(Deposit.point_id == point.id, DepositLine.stream_key == c.stream_key)
+        ) or db.scalar(select(func.count(Pickup.id)).where(Pickup.container_id == c.id))
+        if used:
+            raise api_error(
+                409,
+                "bin_has_history",
+                "A bin with recorded deposits cannot be removed. Close the drop-off point instead.",
+            )
+        point.containers.remove(c)
+        db.delete(c)
+    for key, cap in wanted.items():
+        point.containers.append(Container(stream_key=key, capacity_kg=cap))
+
+
+@router.get("/points", response_model=list[DropPointAdmin])
+def all_points(user: User = Depends(admin), db: Session = Depends(get_db)):
+    rows = db.scalars(
+        select(DropPoint).options(selectinload(DropPoint.containers)).order_by(DropPoint.active.desc(), DropPoint.name)
+    ).all()
+    return [point_admin(p) for p in rows]
+
+
+@router.post("/points", response_model=DropPointAdmin, status_code=201)
+def create_point(body: DropPointIn, user: User = Depends(admin), db: Session = Depends(get_db)):
+    point = DropPoint(name="", address="", lat=0, lng=0)
+    db.add(point)
+    apply_point(db, point, body)
+    db.commit()
+    db.refresh(point, ["containers"])
+    return point_admin(point)
+
+
+@router.put("/points/{point_id}", response_model=DropPointAdmin)
+def update_point(point_id: int, body: DropPointIn, user: User = Depends(admin), db: Session = Depends(get_db)):
+    point = db.scalar(select(DropPoint).where(DropPoint.id == point_id).options(selectinload(DropPoint.containers)))
+    if point is None:
+        raise api_error(404, "point_not_found", "Drop-off point not found.")
+    apply_point(db, point, body)
+    db.commit()
+    db.refresh(point, ["containers"])
+    return point_admin(point)

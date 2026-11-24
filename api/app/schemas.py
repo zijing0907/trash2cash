@@ -148,6 +148,12 @@ class RedemptionOut(BaseModel):
     cost_points: int
     code: str
     created_at: datetime
+    used_at: datetime | None = Field(default=None, description="When staff handed the reward over")
+
+
+class VoucherOut(RedemptionOut):
+    member_name: str
+    member_code: str
 
 
 class ResidentOut(BaseModel):
@@ -210,3 +216,34 @@ class StaffOut(BaseModel):
 class RoleIn(BaseModel):
     role: Role
     drop_point_id: int | None = None
+
+
+class BinIn(BaseModel):
+    stream_key: str
+    capacity_kg: int = Field(gt=0, le=100_000)
+
+
+class DropPointIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    address: str = Field(min_length=1, max_length=200)
+    lat: float = Field(ge=-90, le=90)
+    lng: float = Field(ge=-180, le=180)
+    active: bool = True
+    bins: list[BinIn] = Field(min_length=1, max_length=10)
+
+
+class BinOut(BaseModel):
+    container_id: int
+    stream_key: str
+    capacity_kg: int
+
+
+class DropPointAdmin(BaseModel):
+    id: int
+    name: str
+    address: str
+    lat: float
+    lng: float
+    active: bool
+    is_demo: bool
+    bins: list[BinOut]

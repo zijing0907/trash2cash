@@ -3,6 +3,7 @@ import type {
   Card,
   DepositOut,
   DropPoint,
+  DropPointAdmin,
   ModelInfo,
   PointsPage,
   Redemption,
@@ -15,6 +16,7 @@ import type {
   Staff,
   Stream,
   User,
+  Voucher,
 } from "./types";
 
 /** Every API error has a stable `code` (for logic) and a human `message` (to show). */
@@ -98,6 +100,9 @@ export const api = {
   findResident: (code: string) => request<ResidentLookup>(`/operator/residents/${encodeURIComponent(code.trim())}`),
   deposit: (body: { member_code: string; point_id?: number | null; lines: { stream_key: string; weight_kg: number }[] }) =>
     request<DepositOut>("/operator/deposits", json("POST", body)),
+  voucher: (code: string) => request<Voucher>(`/operator/vouchers/${encodeURIComponent(code.trim())}`),
+  collectVoucher: (code: string) =>
+    request<Voucher>(`/operator/vouchers/${encodeURIComponent(code.trim())}/collect`, { method: "POST" }),
   todaysDeposits: (pointId?: number | null) =>
     request<DepositOut[]>(`/operator/deposits${pointId ? `?point_id=${pointId}` : ""}`),
 
@@ -110,6 +115,11 @@ export const api = {
   adminRewards: () => request<Reward[]>("/admin/rewards"),
   saveReward: (id: number | null, body: Omit<Reward, "id" | "is_demo">) =>
     id ? request<Reward>(`/admin/rewards/${id}`, json("PUT", body)) : request<Reward>("/admin/rewards", json("POST", body)),
+  adminPoints: () => request<DropPointAdmin[]>("/admin/points"),
+  savePoint: (
+    id: number | null,
+    body: { name: string; address: string; lat: number; lng: number; active: boolean; bins: { stream_key: string; capacity_kg: number }[] },
+  ) => (id ? request<DropPointAdmin>(`/admin/points/${id}`, json("PUT", body)) : request<DropPointAdmin>("/admin/points", json("POST", body))),
   staff: (q: string) => request<Staff[]>(`/admin/staff?q=${encodeURIComponent(q)}`),
   setRole: (userId: number, body: { role: string; drop_point_id: number | null }) =>
     request<Staff>(`/admin/users/${userId}/role`, json("PUT", body)),

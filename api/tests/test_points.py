@@ -188,3 +188,65 @@ def test_demo_seed_fills_the_board_once(client):
     assert r.status_code == 200
     board = client.get("/api/admin/board").json()
     assert board["is_demo"] and len(board["points"]) == 4 and board["month"]["kg_total"] >= 0
+
+
+# ---- Phase 1: vouchers handed over at the counter, drop-off points managed by admins --------------------
+
+
+def test_staff_collect_a_voucher_once(client, world):
+    code = world["resident"]["member_code"]
+    login(client, "admin@example.com")
+    reward = client.post("/api/admin/rewards", json={"name": "Bag", "cost_points": 10}).json()
+    login(client, "op@example.com")
+    deposit(client, code, [{"stream_key": "blue bin", "weight_kg": 1}])  # 10 points
+    login(client, "res@example.com")
+    voucher = client.post(f"/api/rewards/{reward['id']}/redeem").json()
+    assert client.get("/api/me/redemptions").json()[0]["used_at"] is None
+
+    login(client, "op@example.com")
+    seen = client.get(f"/api/operator/vouchers/{voucher['code'].lower().replace('-', '')}").json()
+    assert seen["reward_name"] == "Bag" and seen["member_name"] == "Res" and seen["used_at"] is None
+    first = client.post(f"/api/operator/vouchers/{voucher['code']}/collect")
+    assert first.status_code == 200 and first.json()["used_at"]
+    again = client.post(f"/api/operator/vouchers/{voucher['code']}/collect")
+    assert again.status_code == 409 and again.json()["detail"]["code"] == "already_collected"
+    assert client.get("/api/operator/vouchers/ZZZZ-ZZZZ").status_code == 404
+
+    login(client, "res@example.com")
+    assert client.get("/api/me/redemptions").json()[0]["used_at"]
+    assert client.post(f"/api/operator/vouchers/{voucher['code']}/collect").status_code == 403
+
+
+def test_admin_adds_and_edits_drop_off_points(client, world):
+    login(client, "admin@example.com")
+    bins = [{"stream_key": "blue bin", "capacity_kg": 250}, {"stream_key": "brown bin", "capacity_kg": 300}]
+    body = {"name": "Kolej 5 lobby", "address": "Jalan Universiti", "lat": 4.34, "lng": 101.14, "bins": bins}
+    created = client.post("/api/admin/points", json=body)
+    assert created.status_code == 201, created.text
+    point = created.json()
+    assert [b["stream_key"] for b in point["bins"]] == ["blue bin", "brown bin"]
+    assert any(p["name"] == "Kolej 5 lobby" for p in client.get("/api/points").json())
+
+    # Resize one bin, swap the unused glass bin for plastic, then close the point
+    body["bins"] = [{"stream_key": "blue bin", "capacity_kg": 400}, {"stream_key": "orange bin", "capacity_kg": 120}]
+    edited = client.put(f"/api/admin/points/{point['id']}", json=body).json()
+    assert {b["stream_key"]: b["capacity_kg"] for b in edited["bins"]} == {"blue bin": 400, "orange bin": 120}
+    closed = client.put(f"/api/admin/points/{point['id']}", json={**body, "active": False}).json()
+    assert closed["active"] is False
+    assert all(p["name"] != "Kolej 5 lobby" for p in client.get("/api/points").json())
+    assert any(p["name"] == "Kolej 5 lobby" for p in client.get("/api/admin/points").json())
+
+
+def test_a_bin_with_deposits_cannot_be_removed(client, world):
+    login(client, "op@example.com")
+    deposit(client, world["resident"]["member_code"], [{"stream_key": "orange bin", "weight_kg": 2}])
+    login(client, "admin@example.com")
+    body = {"name": "Point A", "address": "Library", "lat": 4.3375, "lng": 101.1436,
+            "bins": [{"stream_key": "blue bin", "capacity_kg": 100}]}  # fmt: skip
+    r = client.put(f"/api/admin/points/{world['point_id']}", json=body)
+    assert r.status_code == 409 and r.json()["detail"]["code"] == "bin_has_history"
+    dup = {**body, "bins": [{"stream_key": "blue bin", "capacity_kg": 1}, {"stream_key": "blue bin", "capacity_kg": 2}]}
+    assert client.put(f"/api/admin/points/{world['point_id']}", json=dup).json()["detail"]["code"] == "duplicate_stream"
+    assert client.post("/api/admin/points", json={**body, "lat": 123}).status_code == 422
+    login(client, "op@example.com")
+    assert client.post("/api/admin/points", json=body).status_code == 403

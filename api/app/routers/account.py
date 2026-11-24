@@ -22,6 +22,7 @@ def redemption_out(r: Redemption) -> dict:
         "cost_points": r.cost_points,
         "code": r.code,
         "created_at": r.created_at,
+        "used_at": r.used_at,
     }
 
 
