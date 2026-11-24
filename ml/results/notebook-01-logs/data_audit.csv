@@ -1,0 +1,9 @@
+,count
+files found,15515
+unreadable files removed,0
+images in cross-class duplicate groups (all removed),6
+exact duplicates removed (same class),16
+"images with a near-duplicate (kept, same split)",154
+near-duplicate groups,74
+near-duplicate groups spanning 2+ classes,2
+images after cleaning,15493

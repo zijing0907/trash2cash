@@ -238,3 +238,36 @@ One entry per milestone: what was chosen, the alternatives, and why.
   is out of date.
 - The model page shows only what the served model's `meta.json` says, and labels test-set metrics as
   such: real phone photos are harder.
+
+## The trained model goes in (24 Nov 2026)
+
+### 3.1 Serve CNN-R, although CNN-A scores higher on the test split
+- **Chose:** keep the Milestone 1 rule (`cnn_robust` when its file exists). The model page shows CNN-R's own numbers.
+- **Alternative:** serve CNN-A (macro F1 0.864 against 0.764 on the garbage-12 test split).
+- **Why:** notebook 03's matched stress test pastes the same test objects onto background kinds never used in
+  training. CNN-A drops to 0.267 macro F1 there; CNN-R keeps 0.556, and loses 14 accuracy points to the background
+  change against CNN-A's 56. Against CNN-B, its own architecture without the robustness changes, CNN-R loses nothing
+  measurable on the test split (−0.005, 95% interval −0.025 to +0.015). Phone photos of cluttered rooms look more
+  like the stress test than like the studio test split. To be re-checked once notebook 02's real-photo test has
+  photos: if CNN-A wins there, switch with `MODEL_KEY=cnn`.
+
+### 3.2 Keras pinned to the Colab version
+- **Chose:** `keras==3.13.2`, the version notebook 03 printed and the `.keras` files record; TensorFlow 2.21.0 already
+  matched. The parity test against notebook 02 still waits for `tests/fixtures/golden.json`, which also records the
+  NumPy and Pillow versions.
+
+### 3.3 Zoom search follows notebook 02's newer rule
+- **Chose:** port the current notebook: zoom search averages the 5 most confident of about 20 crops (one odd crop
+  cannot decide alone), and the answer is an even blend of the centre crop and that consensus. The crop box is the
+  crop that shows the answer best, and Grad-CAM explains that crop. The threshold applies to the blended answer,
+  which is the rule decision 2.6 chose.
+- The notebook can also average several models (an `ensemble` block in `meta.json`); this export has none, so the
+  service does not implement it yet.
+
+### 3.4 Logs in the repository
+- `ml/results/notebook-01-logs/` (3.3 MB of CSV and JSON) is committed, so every number in the README can be traced
+  to a file. The model files are committed too (decision 14).
+
+### 3.5 Still to do
+- The home page's captures were taken with a stand-in model. Retake them with `web/scripts/capture-states.cjs` and
+  two real photos (one the model is sure about, one it is not).
