@@ -48,17 +48,21 @@ def predict(model: keras.Model, arr: np.ndarray, tta: bool = False) -> np.ndarra
     return model(x, training=False).numpy().mean(axis=0)
 
 
-def zoom_search(model: keras.Model, im: Image.Image) -> tuple[np.ndarray, tuple[int, ...], np.ndarray]:
-    """Predict every crop and keep the one the model is most sure about. Returns (probs, box in the original
-    photo's pixels, crop array). Its confidence is a maximum over ~20 crops, so it is NOT calibrated."""
+def zoom_search(model: keras.Model, im: Image.Image, top_k: int = 5) -> tuple[np.ndarray, tuple[int, ...], np.ndarray]:
+    """Look at ~20 overlapping crops and average the top_k most confident ones (a consensus), so one odd crop
+    cannot decide on its own. Returns (consensus probs, box of the crop that best shows the consensus class in
+    the original photo's pixels, that crop's array)."""
     img_size = model.input_shape[1]  # notebook: IMG_SIZE
     f = max(1, min(im.size) // 1024)
     small = im.reduce(f) if f > 1 else im  # 12 MP phone photos: crop a smaller copy, much faster
     boxes = zoom_boxes(*small.size)
     crops = np.stack([np.asarray(small.crop(b).resize((img_size, img_size), RESAMPLE), dtype=np.uint8) for b in boxes])
-    probs = model.predict(crops.astype("float32"), verbose=0, batch_size=64)
-    k = int(probs.max(1).argmax())
-    return probs[k], tuple(v * f for v in boxes[k]), crops[k]
+    probs = np.asarray(model.predict(crops.astype("float32"), verbose=0, batch_size=64))
+    best = np.argsort(-probs.max(1))[: min(top_k, len(probs))]
+    cons = probs[best].mean(0)
+    c = int(cons.argmax())
+    k = int(probs[:, c].argmax())
+    return cons, tuple(v * f for v in boxes[k]), crops[k]
 
 
 def build_grad_model(model: keras.Model, layer_name: str) -> keras.Model:
@@ -226,26 +230,26 @@ class WasteClassifier:
         zoom_search(self.model, grey)
         grad_cam(self.model, arr, self.gradcam_layer, grad_model=self.grad_model)
 
-    def prepare(self, im: Image.Image, zoom: bool) -> tuple[np.ndarray, tuple[int, ...], bool]:
-        """Model input for a photo: the centre crop, or with zoom=True the zoom-search crop if the model is
-        more sure about it (notebook 02, app_predict). Returns (uint8 array, crop box in the photo, zoomed?)."""
+    def answer(
+        self, im: Image.Image, zoom: bool, tta: bool = False
+    ) -> tuple[np.ndarray, np.ndarray, tuple[int, ...], bool]:
+        """Class probabilities for a photo, as notebook 02's app_predict computes them: the centre crop, and with
+        zoom=True an even blend of that and the zoom-search consensus. Returns (probs, the model input Grad-CAM
+        explains, crop box in the photo, zoomed?)."""
         arr = np.asarray(center_crop_resize(im, self.img_size), dtype=np.uint8)
+        probs = predict(self.model, arr, tta)
         if zoom:
             zp, box, zarr = zoom_search(self.model, im)
-            if zp.max() > predict(self.model, arr).max():
-                return zarr, box, True
-        return arr, center_box(*im.size), False
+            return 0.5 * probs + 0.5 * zp, zarr, box, True
+        return probs, arr, center_box(*im.size), False
 
     def classify(self, im: Image.Image, zoom: bool = False, tta: bool | None = None) -> dict:
         """Everything /predict returns, except latency."""
         tta = self.use_tta if tta is None else tta
-        arr, box, zoomed = self.prepare(im, zoom)
-        probs = predict(self.model, arr, tta)
+        probs, _, box, zoomed = self.answer(im, zoom, tta)
         k = int(np.argmax(probs))
         top3 = [int(i) for i in np.argsort(probs)[::-1][:3]]
-        # "Not sure" uses the same threshold with or without zoom search (decided in Milestone 2, see
-        # docs/decisions.md). Notebook 02 never marked a zoomed answer unsure; but a zoomed confidence is the
-        # best of ~20 crops and biased upwards, so if even that is below the threshold the model is not sure.
+        # "Not sure" uses the same threshold with or without zoom search, as notebook 02 now does too
         unsure = bool(probs[k] < self.threshold)
         log.info("predict %s: %s (%.2f)%s", self.version, verdict(probs, self.class_names, self.threshold),
                  probs[k], " zoomed" if zoomed else "")  # fmt: skip
@@ -265,11 +269,12 @@ class WasteClassifier:
         }
 
     def explain_png(self, im: Image.Image, class_idx: int | None = None, zoom: bool = False) -> tuple[bytes, int]:
-        """Grad-CAM overlay as PNG bytes, on the same model input /predict used (same zoom setting).
-        class_idx None = the class the model predicts. Returns (png bytes, class index explained)."""
-        arr, _, _ = self.prepare(im, zoom)
+        """Grad-CAM overlay as PNG bytes for the same photo and zoom setting as /predict: the centre crop, or with
+        zoom the crop that best shows the answer (notebook 02). class_idx None = the class /predict answers.
+        Returns (png bytes, class index explained)."""
+        probs, arr, _, _ = self.answer(im, zoom)
         if class_idx is None:
-            class_idx = int(np.argmax(predict(self.model, arr)))
+            class_idx = int(np.argmax(probs))
         cam = grad_cam(self.model, arr, self.gradcam_layer, class_idx, grad_model=self.grad_model)
         heat = np.uint8(overlay(arr, cam) * 255)  # as in notebook 02's web app
         buf = io.BytesIO()

@@ -1,0 +1,73 @@
+{
+  "class_names": [
+    "battery",
+    "biological",
+    "brown-glass",
+    "cardboard",
+    "clothes",
+    "green-glass",
+    "metal",
+    "paper",
+    "plastic",
+    "shoes",
+    "trash",
+    "white-glass"
+  ],
+  "img_size": 128,
+  "preprocessing": "EXIF rotation fix -> RGB (transparent = white) -> centre square crop -> resize to img_size (Lanczos); pixel values stay 0-255, the model standardises internally",
+  "gradcam_layer": "block4b_relu",
+  "unsure_below": 0.3,
+  "bins": {
+    "battery": "e-waste collection",
+    "biological": "food waste",
+    "brown-glass": "brown bin",
+    "cardboard": "blue bin",
+    "clothes": "textile donation",
+    "green-glass": "brown bin",
+    "metal": "orange bin",
+    "paper": "blue bin",
+    "plastic": "orange bin",
+    "shoes": "textile donation",
+    "trash": "general waste",
+    "white-glass": "brown bin"
+  },
+  "models": {
+    "fcnn": {
+      "run": "FCNN-B32",
+      "file": "best_fcnn.keras",
+      "use_tta": false,
+      "test_accuracy": 0.6749785038693035,
+      "test_balanced_acc": 0.6105286596390104,
+      "test_macro_f1": 0.6005808908117333,
+      "test_bin_accuracy": 0.7158211521926053
+    },
+    "cnn": {
+      "run": "CNN-A",
+      "file": "best_cnn.keras",
+      "use_tta": false,
+      "test_accuracy": 0.8882201203783319,
+      "test_balanced_acc": 0.8660233133264451,
+      "test_macro_f1": 0.863474714286574,
+      "test_bin_accuracy": 0.9062768701633706
+    },
+    "cnn_robust": {
+      "run": "CNN-R",
+      "file": "best_cnn_robust.keras",
+      "test_macro_f1": 0.7642136092968276,
+      "test_balanced_acc": 0.7788237224005802,
+      "test_accuracy": 0.8073946689595872,
+      "gradcam_layer": "block4b_relu"
+    },
+    "fcnn_robust": {
+      "run": "FCNN-R",
+      "file": "best_fcnn_robust.keras",
+      "test_macro_f1": 0.39898877011735157,
+      "test_balanced_acc": 0.4423098512921068,
+      "test_accuracy": 0.470335339638865,
+      "gradcam_layer": null
+    }
+  },
+  "dataset": "mostafaabla/garbage-classification",
+  "quick_run": false,
+  "unsure_below_robust": 0.63
+}

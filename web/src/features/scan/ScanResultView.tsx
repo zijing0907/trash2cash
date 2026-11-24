@@ -112,7 +112,7 @@ export function ScanResultView({ result, file, photoUrl, zoom, onReset }: Props)
             <ProbBars top3={result.top3} threshold={result.threshold} />
             <p className="muted small-print">
               The green mark sits at {percent(result.threshold)}: below it, the model says it is not sure.
-              {result.zoomed && " Zoom search picked the crop it was most sure about, so its percentage is optimistic."}{" "}
+              {result.zoomed && " With zoom search, the answer blends the whole photo with the five crops the model was surest about."}{" "}
               Model {result.model_version}, answered in {Math.round(result.latency_ms)} ms.
             </p>
           </div>
