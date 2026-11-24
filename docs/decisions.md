@@ -271,3 +271,51 @@ One entry per milestone: what was chosen, the alternatives, and why.
 ### 3.5 Still to do
 - The home page's captures were taken with a stand-in model. Retake them with `web/scripts/capture-states.cjs` and
   two real photos (one the model is sure about, one it is not).
+
+## Milestones 3 and 4: drop-off deposits, points, rewards and the pickup board (24 Nov 2026)
+
+### 4.1 Points only for weighed, verified deposits
+- **Chose:** a resident earns points only when an operator at a drop-off point finds them by member code (QR or
+  typed), weighs what they hand in per bin and confirms. Points = kg x the bin's points per kg, set by an admin.
+- **Alternative:** points per scan, as the hackathon pitch implied.
+- **Why:** a photo proves nothing: the same bottle can be photographed a hundred times. Weighing at a counter is
+  how buy-back centres already work, and it gives the board real weights. Staff cannot credit themselves, one bin
+  appears once per deposit, and a line over 100 kg is refused as a typo.
+
+### 4.2 An append-only ledger, and redemption that cannot overspend
+- **Chose:** a balance is the sum of `points_ledger` rows; nothing overwrites it. Redeeming locks the user's row
+  (`SELECT ... FOR UPDATE`), checks the balance, takes limited stock with a conditional `UPDATE ... WHERE stock > 0`,
+  and writes the redemption and its negative entry in one commit.
+- **Why:** every point can be traced to a deposit or a reward, and two redemptions sent at the same moment cannot
+  both spend the same points or the last item in stock.
+
+### 4.3 Member codes, not user ids, in the QR code
+- **Chose:** 8 random characters from an alphabet without 0/O, 1/I/L (`7KQM-3XPA`), unique, created at sign-up and
+  backfilled by migration 0002. The operator screen accepts it typed in any case, with or without the dash.
+  Phones that have a built-in barcode reader (Chrome, Android) can scan it with the camera; others type it.
+- **Why:** a counter needs something short to read aloud; a random code reveals nothing about the account.
+
+### 4.4 A forecast you can explain
+- **Chose:** fill = weight deposited since the bin was last emptied; inflow = the average per day over the last
+  14 days; a straight line gives the day it is full and the day it passes 90%. Due = past 90% or less than two
+  days from it; soon = within a week. Today's run takes the due drop-off points, most urgent first, then always the
+  nearest next (great-circle distance).
+- **Alternatives:** a time-series model per bin; an exact route optimiser.
+- **Why:** with a few weeks of data a straight line is as good as anything, and an admin can check it by hand.
+  Nearest-neighbour is fine for the handful of stops a daily run has; the code says where it would stop being
+  enough. The 90% rule answers the pitch's problem directly: trucks come before bins overflow, not when half empty.
+
+### 4.5 Rates, prices and rewards are the admin's, and demo data says it is demo data
+- **Chose:** migration 0002 creates the five bins with placeholder points and no price; an admin sets the real
+  values in Setup. `python -m app.cli seed-demo` adds sample drop-off points (marked `is_demo`), 40 residents,
+  six weeks of deposits and sample rewards, and every screen that shows them says "demo data". Past pickups in the
+  seed are worked out backwards from a spread of current fills, so each one collected exactly what was deposited
+  since the previous one.
+- **Why:** none of these numbers were given, so none are presented as real.
+
+### 4.6 Screens
+- All five are app screens in the locked Editorial system (`web/design.md`): tables before cards, every data area
+  with loading, empty, error and full states, the accent only for the primary action and state, bin colours only to
+  name bins. Navigation follows the role: operators get Weigh-in, admins Weigh-in and Board.
+- The Hallmark render checks ran on these routes signed out (they cannot log in), so the signed-in screens were
+  checked by driving the app as each demo role at desktop and phone size.
