@@ -26,6 +26,7 @@ class Settings:
     media_dir: Path  # photos users chose to donate
     scan_rate_per_min: int  # per client IP; 0 = no limit
     trust_proxy: bool  # read the client IP from X-Forwarded-For (only behind our own nginx)
+    timezone: str = "Asia/Kuala_Lumpur"  # days on the admin board and "today's deposits" are local days
 
 
 def load_settings() -> Settings:
@@ -45,4 +46,5 @@ def load_settings() -> Settings:
         media_dir=Path(os.getenv("MEDIA_DIR", "media")),
         scan_rate_per_min=int(os.getenv("SCAN_RATE_PER_MIN", "20")),
         trust_proxy=_bool("TRUST_PROXY", False),
+        timezone=os.getenv("TIMEZONE", "Asia/Kuala_Lumpur"),
     )
