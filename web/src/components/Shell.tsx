@@ -1,16 +1,38 @@
-import { BookOpen, Brain, History, House, LogOut, ScanLine } from "lucide-react";
+import { BookOpen, Brain, Gift, History, House, LayoutGrid, LogOut, Scale, ScanLine } from "lucide-react";
 import { NavLink, Outlet, ScrollRestoration, useNavigate } from "react-router";
 
 import { useLogout, useMe } from "../lib/hooks";
 import { Logo } from "./Logo";
 import { ButtonLink } from "./ui";
 
-const NAV = [
-  { to: "/scan", label: "Scan", short: "Scan", icon: ScanLine },
-  { to: "/guide", label: "Bin guide", short: "Guide", icon: BookOpen },
-  { to: "/model", label: "The model", short: "Model", icon: Brain },
-  { to: "/me", label: "My scans", short: "My scans", icon: History },
-];
+import type { Role } from "../lib/types";
+
+const LINKS = {
+  scan: { to: "/scan", label: "Scan", short: "Scan", icon: ScanLine },
+  guide: { to: "/guide", label: "Bin guide", short: "Guide", icon: BookOpen },
+  model: { to: "/model", label: "The model", short: "Model", icon: Brain },
+  rewards: { to: "/rewards", label: "Rewards", short: "Rewards", icon: Gift },
+  weigh: { to: "/operator", label: "Weigh-in", short: "Weigh-in", icon: Scale },
+  board: { to: "/admin", label: "Board", short: "Board", icon: LayoutGrid },
+  me: { to: "/me", label: "My account", short: "Me", icon: History },
+  home: { to: "/", label: "Home", short: "Home", icon: House },
+};
+
+/** Top links by role: staff get their screens; everyone keeps scanning and their account. */
+function navFor(role: Role | undefined) {
+  const { scan, guide, model, rewards, weigh, board, me } = LINKS;
+  if (role === "admin") return [scan, guide, rewards, weigh, board, me];
+  if (role === "operator") return [scan, guide, rewards, weigh, me];
+  return [scan, guide, model, rewards, me];
+}
+
+/** The phone's five tabs */
+function tabsFor(role: Role | undefined) {
+  const { home, scan, guide, rewards, weigh, board, me } = LINKS;
+  if (role === "admin") return [home, scan, weigh, board, me];
+  if (role === "operator") return [home, scan, weigh, rewards, me];
+  return [home, scan, guide, rewards, me];
+}
 
 function AccountArea() {
   const { data: me } = useMe();
@@ -48,6 +70,8 @@ function AccountArea() {
 }
 
 export function Shell() {
+  const { data: me } = useMe();
+  const role = me?.role;
   return (
     <>
       <a className="skip" href="#main">
@@ -57,7 +81,7 @@ export function Shell() {
         <div className="container masthead__row">
           <Logo />
           <nav className="masthead__nav" aria-label="Main">
-            {NAV.map((n) => (
+            {navFor(role).map((n) => (
               <NavLink key={n.to} to={n.to} className="navlink">
                 {n.label}
               </NavLink>
@@ -87,7 +111,7 @@ export function Shell() {
       {/* Phone: tab bar at the bottom, where thumbs are */}
       <nav className="tabbar" aria-label="Main">
         <div className="tabbar__row">
-          {[{ to: "/", label: "Home", short: "Home", icon: House }, ...NAV].map((n) => {
+          {tabsFor(role).map((n) => {
             const Icon = n.icon;
             return (
               <NavLink key={n.to} to={n.to} end={n.to === "/"} className={n.to === "/scan" ? "tab tab--scan" : "tab"}>

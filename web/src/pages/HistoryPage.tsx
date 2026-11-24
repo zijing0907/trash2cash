@@ -1,39 +1,23 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, ScanLine } from "lucide-react";
+import { Heart } from "lucide-react";
+import { Link } from "react-router";
 
 import { BinBadge } from "../components/BinBadge";
-import { Button, ButtonLink, ErrorNote, Spinner } from "../components/ui";
+import { Button, ErrorNote, Spinner } from "../components/ui";
 import { api } from "../lib/api";
-import { useMe, useModelInfo } from "../lib/hooks";
+import { useModelInfo } from "../lib/hooks";
 import { percent } from "../lib/image";
 import { binInfo, classInfo, OTHER_LABEL } from "../lib/recycling";
 import type { Scan } from "../lib/types";
 
-export function HistoryPage() {
-  const { data: me, isPending } = useMe();
-  if (isPending) return <Spinner label="Loading…" />;
-  if (!me) {
-    return (
-      <div className="container gone">
-        <h1>Your scans live here</h1>
-        <p className="lead">Log in to see everything you’ve scanned and labelled.</p>
-        <div className="actions">
-          <ButtonLink to="/login?next=/me">Log in</ButtonLink>
-          <ButtonLink to="/signup?next=/me" variant="secondary">
-            Sign up
-          </ButtonLink>
-        </div>
-      </div>
-    );
-  }
+/** The scans part of the account page: per-bin summary and the list, newest first. */
+export function ScanHistory() {
   return (
-    <div className="container app">
-      <header className="app__head">
-        <h1>Hi {me.display_name}</h1>
-      </header>
+    <section className="account__section" aria-labelledby="scans-head">
+      <h2 id="scans-head">My scans</h2>
       <Summary />
       <ScanList />
-    </div>
+    </section>
   );
 }
 
@@ -85,13 +69,13 @@ function ScanList() {
   const items = scans.data.pages.flatMap((p) => p.items);
   if (items.length === 0) {
     return (
-      <div className="gone">
-        <h2>No scans yet</h2>
-        <p>Scan your first item to start your history.</p>
-        <ButtonLink to="/scan">
-          <ScanLine size={18} aria-hidden /> Scan an item
-        </ButtonLink>
-      </div>
+      <p className="empty">
+        No scans yet.{" "}
+        <Link to="/scan" className="link">
+          Scan an item
+        </Link>{" "}
+        to start your history.
+      </p>
     );
   }
   return (

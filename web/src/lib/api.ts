@@ -1,4 +1,21 @@
-import type { ModelInfo, Scan, ScanPage, ScanResult, ScanSummary, User } from "./types";
+import type {
+  Board,
+  Card,
+  DepositOut,
+  DropPoint,
+  ModelInfo,
+  PointsPage,
+  Redemption,
+  ResidentLookup,
+  Reward,
+  Scan,
+  ScanPage,
+  ScanResult,
+  ScanSummary,
+  Staff,
+  Stream,
+  User,
+} from "./types";
 
 /** Every API error has a stable `code` (for logic) and a human `message` (to show). */
 export class ApiError extends Error {
@@ -67,4 +84,33 @@ export const api = {
     request<ScanPage>(`/scans?limit=20${before ? `&before=${encodeURIComponent(before)}` : ""}`),
   summary: () => request<ScanSummary>("/scans/summary"),
   model: () => request<ModelInfo>("/model"),
+
+  // Points and rewards
+  streams: () => request<Stream[]>("/streams"),
+  dropPoints: () => request<DropPoint[]>("/points"),
+  card: () => request<Card>("/me/card"),
+  points: (before?: number | null) => request<PointsPage>(`/me/points?limit=20${before ? `&before=${before}` : ""}`),
+  rewards: () => request<Reward[]>("/rewards"),
+  redeem: (rewardId: number) => request<Redemption>(`/rewards/${rewardId}/redeem`, { method: "POST" }),
+  redemptions: () => request<Redemption[]>("/me/redemptions"),
+
+  // Operators
+  findResident: (code: string) => request<ResidentLookup>(`/operator/residents/${encodeURIComponent(code.trim())}`),
+  deposit: (body: { member_code: string; point_id?: number | null; lines: { stream_key: string; weight_kg: number }[] }) =>
+    request<DepositOut>("/operator/deposits", json("POST", body)),
+  todaysDeposits: (pointId?: number | null) =>
+    request<DepositOut[]>(`/operator/deposits${pointId ? `?point_id=${pointId}` : ""}`),
+
+  // Admins
+  board: () => request<Board>("/admin/board"),
+  pickups: (containerIds: number[]) =>
+    request<{ emptied: number; collected_kg: number }>("/admin/pickups", json("POST", { container_ids: containerIds })),
+  updateStream: (key: string, body: { points_per_kg: number; price_sen_per_kg: number }) =>
+    request<Stream>(`/admin/streams/${encodeURIComponent(key)}`, json("PUT", body)),
+  adminRewards: () => request<Reward[]>("/admin/rewards"),
+  saveReward: (id: number | null, body: Omit<Reward, "id" | "is_demo">) =>
+    id ? request<Reward>(`/admin/rewards/${id}`, json("PUT", body)) : request<Reward>("/admin/rewards", json("POST", body)),
+  staff: (q: string) => request<Staff[]>(`/admin/staff?q=${encodeURIComponent(q)}`),
+  setRole: (userId: number, body: { role: string; drop_point_id: number | null }) =>
+    request<Staff>(`/admin/users/${userId}/role`, json("PUT", body)),
 };
