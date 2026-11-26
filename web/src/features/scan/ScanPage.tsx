@@ -9,6 +9,7 @@ import { useMe } from "../../lib/hooks";
 import { withViewTransition } from "../../lib/motion";
 import { shrinkPhoto } from "../../lib/photo";
 import type { ScanResult } from "../../lib/types";
+import { FirstScanGuide } from "./FirstScanGuide";
 import { PhotoPicker } from "./PhotoPicker";
 import { ScanResultView } from "./ScanResultView";
 
@@ -71,6 +72,7 @@ export function ScanPage() {
         <h1>{result ? "Here's where it goes" : "Which bin does it go in?"}</h1>
       </header>
 
+      {!photo && <FirstScanGuide />}
       {!photo && <PhotoPicker onPick={pick} />}
 
       {photo && !result && (

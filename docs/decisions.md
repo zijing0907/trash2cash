@@ -507,3 +507,31 @@ One entry per milestone: what was chosen, the alternatives, and why.
   frame slightly before the time read in code; the count now times itself from the first frame and stays between
   the old and the new number.
 
+## Phase 8b: ease of use (26 Nov 2026)
+
+### 10.2 What changed, and why
+- **Fewer, clearer menus:** at most five top links per role, each role's own screen first (Board for admins,
+  Weigh-in for operators, Jobs for collectors). The account is the name at the top right; "The model" moved to
+  the footer and the home page. On phones Scan sits in the middle of the tab bar, under the thumb; Home is the
+  wordmark.
+- **Undo instead of "are you sure?":** cancelling a home pickup, withdrawing a job, handing a job back and deleting
+  a donated photo happen at once, with Undo in the note at the bottom. The API can restore a cancelled pickup or
+  reopen a withdrawn job for 10 minutes; handing back is undone by taking the job again; a photo is deleted 5
+  seconds later (at once if the person leaves the page). Spending points and recording a pickup keep their
+  confirm step, because they move points or weights.
+- **Forms say what is wrong where it is wrong:** the home pickup form checks each field once the person leaves
+  it, updates as they fix it, puts the cursor on the first problem, and keeps "Book" in reach on phones.
+- **A faster counter for staff:** the member code box has the cursor, "/" brings it back from anywhere, Enter
+  finds the member and moves to the first weight, Enter steps through the bins and credits on the last; weights
+  are big; "Same member again" after a receipt.
+- **Help where it is needed:** three steps on a person's first scan, until "Got it"; empty pages say the next
+  step; anything that fails to load offers "Try again"; a line under the masthead says when the browser is
+  offline.
+- **Accessibility:** each page has its own tab title, and after a page change focus moves to the new heading (a
+  page that put the cursor in a field keeps it). axe-core finds no violations on any page for any role, at
+  desktop and phone sizes; the only one it found (source links in the home page's dark band, told apart by colour
+  alone) is fixed.
+- **Home and link previews:** the home page gains "After the bin" (map, home pickups, reports, community) and a
+  share image with a title and description for WhatsApp and LinkedIn. The image address is relative until the
+  site has its own domain (Phase 3), when it should become absolute.
+

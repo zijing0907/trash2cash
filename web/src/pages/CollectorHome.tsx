@@ -13,13 +13,26 @@ import { useToast } from "../lib/toast";
 import { binInfo } from "../lib/recycling";
 import type { HomePickup } from "../lib/types";
 
-function useHomeAction<T>(fn: (v: T) => Promise<HomePickup>, done?: (p: HomePickup) => string) {
+function useHomeAction<T>(
+  fn: (v: T) => Promise<HomePickup>,
+  done?: (p: HomePickup) => string,
+  undo?: (p: HomePickup) => Promise<unknown>,
+) {
   const qc = useQueryClient();
   const toast = useToast();
   return useMutation({
     mutationFn: fn,
     onSuccess: (p) => {
-      if (done) toast(done(p));
+      if (!done) return;
+      const action = undo && {
+        label: "Undo",
+        run: () =>
+          undo(p).then(
+            () => qc.invalidateQueries({ queryKey: ["collector", "home"] }),
+            (e: Error) => toast(e.message),
+          ),
+      };
+      toast(done(p), action ? { action } : undefined);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["collector", "home"] }),
   });
@@ -41,7 +54,7 @@ export function CollectorHome({ me }: { me: LatLng | null }) {
         Residents with 5 kg or more book a pickup. You see the address once you take one; until then, only the area.
       </p>
       {list.isPending && <Skeleton label="Loading home pickups…" lines={3} />}
-      {list.error && <ErrorNote>{list.error.message}</ErrorNote>}
+      {list.error && <ErrorNote onRetry={() => void list.refetch()}>{list.error.message}</ErrorNote>}
       {list.data && (
         <>
           {list.data.mine.length > 0 && (
@@ -131,8 +144,15 @@ function MyHomePickup({ p }: { p: HomePickup }) {
     (lines: { stream_key: string; weight_kg: number }[]) => homeApi.collect(p.id, lines),
     (done) => `Collected. ${done.resident?.name ?? "They"} got ${done.points ?? 0} points`,
   );
-  const missed = useHomeAction((why: string) => homeApi.missed(p.id, why), () => "Marked as missed");
-  const release = useHomeAction(() => homeApi.release(p.id), () => "Handed back for another collector");
+  const missed = useHomeAction(
+    (why: string) => homeApi.missed(p.id, why),
+    () => "Marked as missed",
+  );
+  const release = useHomeAction(
+    () => homeApi.release(p.id),
+    () => "Handed back for another collector",
+    (back) => homeApi.take(back.id),
+  );
 
   function submit(e: React.FormEvent) {
     e.preventDefault();

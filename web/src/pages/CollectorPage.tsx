@@ -28,13 +28,26 @@ const at = (j: Job): LatLng => [j.point.lat, j.point.lng];
 const expectedKg = (j: Job) => j.items.reduce((sum, it) => sum + it.expected_kg, 0);
 
 /** A job action that refreshes the lists, and says in a short note what happened when it worked */
-function useJobAction<T>(fn: (v: T) => Promise<Job>, done?: (job: Job, v: T) => string) {
+function useJobAction<T>(
+  fn: (v: T) => Promise<Job>,
+  done?: (job: Job, v: T) => string,
+  undo?: (job: Job) => Promise<unknown>,
+) {
   const qc = useQueryClient();
   const toast = useToast();
   return useMutation({
     mutationFn: fn,
     onSuccess: (job, v) => {
-      if (done) toast(done(job, v));
+      if (!done) return;
+      const action = undo && {
+        label: "Undo",
+        run: () =>
+          undo(job).then(
+            () => qc.invalidateQueries({ queryKey: ["collector", "jobs"] }),
+            (e: Error) => toast(e.message),
+          ),
+      };
+      toast(done(job, v), action ? { action } : undefined);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["collector", "jobs"] }),
   });
@@ -56,7 +69,7 @@ function Jobs() {
       </header>
       {position.problem && <ErrorNote>{position.problem}</ErrorNote>}
       {jobs.isPending && <Skeleton label="Loading jobs…" />}
-      {jobs.error && <ErrorNote>{jobs.error.message}</ErrorNote>}
+      {jobs.error && <ErrorNote onRetry={() => void jobs.refetch()}>{jobs.error.message}</ErrorNote>}
       {jobs.data && (
         <>
           <Mine jobs={jobs.data.mine} me={position.at} />
@@ -113,6 +126,7 @@ function MyJob({ n, job }: { n: number; job: Job }) {
   const release = useJobAction(
     () => api.releaseJob(job.id),
     (j) => `${j.point.name} is open for other collectors again`,
+    (j) => api.takeJob(j.id),
   );
   const started = job.items.some((it) => it.state !== "to_do");
   return (

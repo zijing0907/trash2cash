@@ -73,7 +73,7 @@ export function MapPage() {
       {position.problem && <ErrorNote>{position.problem}</ErrorNote>}
 
       {map.isPending && <Skeleton label="Loading the drop-off points…" variant="block" />}
-      {map.error && <ErrorNote>{map.error.message}</ErrorNote>}
+      {map.error && <ErrorNote onRetry={() => void map.refetch()}>{map.error.message}</ErrorNote>}
       {map.data && points.length === 0 && (
         <p className="empty">No drop-off points are open yet. Once an admin adds one, it shows up here.</p>
       )}

@@ -22,6 +22,7 @@ export function HomePage() {
       <Sort />
       <Prepare />
       <TeachAndDropOff />
+      <AfterTheBin />
       <Why />
       <section className="container close">
         <h2>Got something in your hand right now?</h2>
@@ -191,14 +192,64 @@ function TeachAndDropOff() {
             5. Drop off and earn
           </h2>
           <p>
-            Operators weigh and verify deposits at drop-off points and you earn points. Admins see when each point
-            needs a pickup.{" "}
+            Staff weigh what you hand in at a drop-off point, and you earn points for every kilogram. Spend them on
+            rewards.{" "}
             <Link to="/rewards" className="link">
               See the rewards
             </Link>
           </p>
         </div>
       </div>
+    </section>
+  );
+}
+
+const AFTER = [
+  {
+    to: "/map",
+    title: "Find a drop-off point",
+    text: "Every point on a map, the nearest first, with how full each bin is and how the app knows it.",
+  },
+  {
+    to: "/pickup",
+    title: "Too much to carry?",
+    text: "Book a collector for 5 kg or more. They weigh it at your door, and the points are for what they weigh.",
+  },
+  {
+    to: "/map",
+    title: "Full bins get reported",
+    text: "Anyone can say a bin is full. When three people do, it goes on the day’s pickup run.",
+  },
+  {
+    to: "/community",
+    title: "Recycled together",
+    text: "What everyone weighed in, week by week and place by place, and the items people find most confusing.",
+  },
+];
+
+/** What happens after the bin: the parts of the app beyond the scan (Phases 4 to 7) */
+function AfterTheBin() {
+  return (
+    <section className="container stage">
+      <div className="stage__head">
+        <h2>6. After the bin</h2>
+        <p>
+          Collectors take the day’s pickups like rides on Grab: they weigh what they take and photograph the empty
+          bin, and those weights teach the forecast how full bins really get.
+        </p>
+      </div>
+      <ul className="after">
+        {AFTER.map((a) => (
+          <li key={a.title}>
+            <h3>
+              <Link to={a.to} className="link" viewTransition>
+                {a.title}
+              </Link>
+            </h3>
+            <p>{a.text}</p>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

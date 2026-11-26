@@ -155,7 +155,8 @@
 /* ---- Lists arrive in order, once ------------------------------------------------------------------------- */
 .places > li,
 .jobs > li,
-.rewards > li {
+.rewards > li,
+.firsttime li {
   animation: rise 420ms var(--ease-out) both;
   animation-delay: calc(min(var(--i, 0), 8) * 50ms);
 }

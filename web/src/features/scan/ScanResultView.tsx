@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, Heart, RotateCcw, ScanLine, TriangleAlert, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 
 import { PhotoWithBox } from "../../components/PhotoWithBox";
@@ -10,9 +10,13 @@ import { api } from "../../lib/api";
 import { useMe, useModelInfo } from "../../lib/hooks";
 import { percent } from "../../lib/image";
 import { binInfo, classesIn, classInfo, OTHER_LABEL } from "../../lib/recycling";
+import { useToast } from "../../lib/toast";
 import { binLevelAnswer, type ClassProb, type ScanResult } from "../../lib/types";
 import { GradCamPanel } from "./GradCamPanel";
+
 import { LabelPicker } from "./LabelPicker";
+
+const UNDO_MS = 5000;
 
 interface Props {
   result: ScanResult;
@@ -38,7 +42,42 @@ export function ScanResultView({ result, file, photoUrl, zoom, onReset }: Props)
       void qc.invalidateQueries({ queryKey: ["scans"] });
     },
   });
-  const withdraw = useMutation({ mutationFn: () => api.deletePhoto(result.id), onSuccess: () => setDonated(false) });
+  // Deleting a donated photo waits a few seconds, so Undo can keep it; leaving the page deletes it at once
+  const toast = useToast();
+  const pendingDelete = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (pendingDelete.current) {
+        clearTimeout(pendingDelete.current);
+        void api.deletePhoto(result.id);
+      }
+    },
+    [result.id],
+  );
+  const withdraw = {
+    isPending: false,
+    mutate: () => {
+      setDonated(false);
+      pendingDelete.current = setTimeout(() => {
+        pendingDelete.current = null;
+        void api.deletePhoto(result.id).catch((e: Error) => {
+          setDonated(true);
+          toast(e.message);
+        });
+      }, UNDO_MS);
+      toast("Photo deleted", {
+        ms: UNDO_MS,
+        action: {
+          label: "Undo",
+          run: () => {
+            if (pendingDelete.current) clearTimeout(pendingDelete.current);
+            pendingDelete.current = null;
+            setDonated(true);
+          },
+        },
+      });
+    },
+  };
 
   // The item the answer is about: the user's own label wins; an unsure model answer is not shown as fact
   const item = label && label !== OTHER_LABEL ? label : !result.unsure && !label ? result.predicted_class : null;

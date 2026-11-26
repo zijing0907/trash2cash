@@ -31,7 +31,17 @@ function WeighIn() {
   const point = points.data?.find((p) => p.id === pointId) ?? null;
 
   if (points.isPending || streams.isPending) return <Spinner label="Loading…" />;
-  if (points.error || streams.error) return <ErrorNote>{(points.error ?? streams.error)!.message}</ErrorNote>;
+  if (points.error || streams.error)
+    return (
+      <ErrorNote
+        onRetry={() => {
+          void points.refetch();
+          void streams.refetch();
+        }}
+      >
+        {(points.error ?? streams.error)!.message}
+      </ErrorNote>
+    );
   if (!point) {
     return (
       <div className="container gone">
@@ -83,8 +93,29 @@ function Counter(props: {
   const [receipt, setReceipt] = useState<DepositOut | null>(null);
   const [scanning, setScanning] = useState(false);
   const bins = props.streams.filter((s) => props.pointStreams.includes(s.key));
+  const codeInput = useRef<HTMLInputElement>(null);
+  const weightInputs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // The counter is ready to type into, and "/" brings the cursor back to the member code from anywhere
+  useEffect(() => {
+    codeInput.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+      if (e.key === "/" && !typing && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        codeInput.current?.focus();
+        codeInput.current?.select();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const find = useMutation({ mutationFn: (c: string) => api.findResident(c), onSuccess: setMember });
+  // Once a member is found, straight on to the first bin's weight
+  useEffect(() => {
+    if (member) weightInputs.current[0]?.focus();
+  }, [member]);
   const lines = useMemo(
     () =>
       bins
@@ -113,6 +144,7 @@ function Counter(props: {
     setReceipt(null);
     find.reset();
     save.reset();
+    setTimeout(() => codeInput.current?.focus(), 0); // ready for the next person
   }
 
   if (receipt) {
@@ -137,7 +169,20 @@ function Counter(props: {
             <CountUp from={receipt.balance_after - receipt.points} to={receipt.balance_after} format={pts} />
           </p>
         )}
-        <Button onClick={next}>Next member</Button>
+        <div className="actions">
+          <Button onClick={next}>Next member</Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              const again = receipt.member_code;
+              next();
+              setCode(again);
+              find.mutate(again);
+            }}
+          >
+            Same member again
+          </Button>
+        </div>
       </section>
     );
   }
@@ -154,6 +199,7 @@ function Counter(props: {
         <label className="field">
           <span>Member code</span>
           <input
+            ref={codeInput}
             className="input"
             value={code}
             onChange={(e) => {
@@ -176,6 +222,10 @@ function Counter(props: {
             </Button>
           )}
         </div>
+        <p className="small-print muted kbd-hint">
+          Press <kbd>/</kbd> to type a code from anywhere. <kbd>Enter</kbd> moves to the next bin, and credits on the
+          last one.
+        </p>
       </form>
       {scanning && (
         <QrScanner
@@ -205,17 +255,28 @@ function Counter(props: {
           </p>
           <fieldset className="slip__bins">
             <legend>Weight per bin, in kg</legend>
-            {bins.map((s) => {
+            {bins.map((s, i) => {
               const v = Number((weights[s.key] ?? "").replace(",", "."));
               return (
                 <label key={s.key} className="slip__bin">
                   <BinBadge bin={s.key} />
                   <span className="muted small-print">{s.name}</span>
                   <input
-                    className="input"
+                    ref={(el) => {
+                      weightInputs.current[i] = el;
+                    }}
+                    className="input input--weight"
                     inputMode="decimal"
+                    enterKeyHint={i < bins.length - 1 ? "next" : "done"}
                     value={weights[s.key] ?? ""}
                     onChange={(e) => setWeights((w) => ({ ...w, [s.key]: e.target.value }))}
+                    onKeyDown={(e) => {
+                      // Enter steps to the next bin; on the last one it credits, as the form would
+                      if (e.key === "Enter" && i < bins.length - 1) {
+                        e.preventDefault();
+                        weightInputs.current[i + 1]?.focus();
+                      }
+                    }}
                     aria-label={`${s.name} in kg`}
                     placeholder="0.0"
                   />
@@ -328,7 +389,7 @@ function Today({ pointId, isAdmin }: { pointId: number; isAdmin: boolean }) {
         Today here
       </h2>
       {q.isPending && <Skeleton label="Loading today’s deposits…" lines={3} />}
-      {q.error && <ErrorNote>{q.error.message}</ErrorNote>}
+      {q.error && <ErrorNote onRetry={() => void q.refetch()}>{q.error.message}</ErrorNote>}
       {q.data && q.data.length === 0 && <p className="empty">No deposits yet today.</p>}
       {q.data && q.data.length > 0 && (
         <table className="table">

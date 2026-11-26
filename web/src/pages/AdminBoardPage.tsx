@@ -43,7 +43,7 @@ function BoardScreen() {
         </Link>
       </header>
       {board.isPending && <Skeleton label="Working out every bin…" lines={6} />}
-      {board.error && <ErrorNote>{board.error.message}</ErrorNote>}
+      {board.error && <ErrorNote onRetry={() => void board.refetch()}>{board.error.message}</ErrorNote>}
       {board.data && (
         <>
           {board.data.is_demo && (
@@ -179,7 +179,19 @@ function JobsTable() {
   const cancel = useMutation({
     mutationFn: (id: number) => api.cancelJob(id),
     onSuccess: (j) => {
-      toast(`Withdrawn: ${j.point.name}`);
+      toast(`Withdrawn: ${j.point.name}`, {
+        action: {
+          label: "Undo",
+          run: () =>
+            api.reopenJob(j.id).then(
+              () => {
+                void qc.invalidateQueries({ queryKey: ["admin", "jobs"] });
+                void qc.invalidateQueries({ queryKey: ["admin", "board"] });
+              },
+              (e: Error) => toast(e.message),
+            ),
+        },
+      });
       void qc.invalidateQueries({ queryKey: ["admin", "jobs"] });
       void qc.invalidateQueries({ queryKey: ["admin", "board"] });
     },
@@ -188,7 +200,7 @@ function JobsTable() {
     <section className="account__section" aria-labelledby="jobs-head">
       <h2 id="jobs-head">Collector jobs</h2>
       {jobs.isPending && <Skeleton label="Loading jobs…" lines={3} />}
-      {jobs.error && <ErrorNote>{jobs.error.message}</ErrorNote>}
+      {jobs.error && <ErrorNote onRetry={() => void jobs.refetch()}>{jobs.error.message}</ErrorNote>}
       {cancel.error && <ErrorNote>{cancel.error.message}</ErrorNote>}
       {jobs.data && jobs.data.length === 0 && (
         <p className="empty">No jobs in the last two weeks. Offer today’s run to collectors to start one.</p>
@@ -266,7 +278,7 @@ function HomePickups() {
     <section className="account__section" aria-labelledby="home-head">
       <h2 id="home-head">Home pickups</h2>
       {list.isPending && <Skeleton label="Loading home pickups…" lines={3} />}
-      {list.error && <ErrorNote>{list.error.message}</ErrorNote>}
+      {list.error && <ErrorNote onRetry={() => void list.refetch()}>{list.error.message}</ErrorNote>}
       {list.data && list.data.length === 0 && (
         <p className="empty">No home pickups in the last two weeks. Residents book them from the map or their account.</p>
       )}

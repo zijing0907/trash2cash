@@ -44,7 +44,7 @@ export function RewardsPage() {
       )}
 
       {rewards.isPending && <Skeleton label="Loading rewards…" />}
-      {rewards.error && <ErrorNote>{rewards.error.message}</ErrorNote>}
+      {rewards.error && <ErrorNote onRetry={() => void rewards.refetch()}>{rewards.error.message}</ErrorNote>}
       {rewards.data && rewards.data.length === 0 && <p className="empty">No rewards are on offer right now.</p>}
       {rewards.data && rewards.data.length > 0 && (
         <>
@@ -136,7 +136,7 @@ function WhereToHandIn() {
     <section className="account__section" id="where" aria-labelledby="where-head">
       <h2 id="where-head">Where to hand it in</h2>
       {points.isPending && <Skeleton label="Loading drop-off points…" lines={3} />}
-      {points.error && <ErrorNote>{points.error.message}</ErrorNote>}
+      {points.error && <ErrorNote onRetry={() => void points.refetch()}>{points.error.message}</ErrorNote>}
       {points.data && points.data.length === 0 && <p className="empty">No drop-off points are open yet.</p>}
       {points.data && points.data.length > 0 && (
         <>

@@ -66,7 +66,7 @@ function ScanList() {
     getNextPageParam: (last) => last.next_before,
   });
   if (scans.isPending) return <Skeleton label="Loading your scans…" />;
-  if (scans.error) return <ErrorNote>{scans.error.message}</ErrorNote>;
+  if (scans.error) return <ErrorNote onRetry={() => void scans.refetch()}>{scans.error.message}</ErrorNote>;
   const items = scans.data.pages.flatMap((p) => p.items);
   if (items.length === 0) {
     return (

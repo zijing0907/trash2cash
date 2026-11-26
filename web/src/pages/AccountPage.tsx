@@ -48,7 +48,7 @@ export function AccountPage() {
 function MemberCard() {
   const card = useQuery({ queryKey: ["points", "card"], queryFn: api.card });
   if (card.isPending) return <Skeleton label="Loading your card…" lines={3} />;
-  if (card.error) return <ErrorNote>{card.error.message}</ErrorNote>;
+  if (card.error) return <ErrorNote onRetry={() => void card.refetch()}>{card.error.message}</ErrorNote>;
   return <MemberCardBody c={card.data} />;
 }
 
@@ -102,11 +102,14 @@ function PointsHistory() {
     <section className="account__section" aria-labelledby="points-head">
       <h2 id="points-head">Points history</h2>
       {q.isPending && <Skeleton label="Loading your points…" />}
-      {q.error && <ErrorNote>{q.error.message}</ErrorNote>}
+      {q.error && <ErrorNote onRetry={() => void q.refetch()}>{q.error.message}</ErrorNote>}
       {q.data && q.data.pages[0]!.items.length === 0 && (
         <p className="empty">
           No points yet. Take your sorted recycling to a drop-off point; the points appear here as soon as staff
-          weigh it. <Link to="/rewards#where" className="link">Where to hand it in</Link>
+          weigh it.{" "}
+          <Link to="/map" className="link">
+            Find the nearest drop-off point
+          </Link>
         </p>
       )}
       {q.data && q.data.pages[0]!.items.length > 0 && (

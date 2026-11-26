@@ -22,6 +22,19 @@ function isoDay(d: Date): string {
   return local.toISOString().slice(0, 10);
 }
 
+type Field = "streams" | "kg" | "address" | "pin" | "photo";
+const FIELDS: Field[] = ["streams", "kg", "address", "pin", "photo"]; // in the order they appear
+
+/** A field's problem under it, read with the field (aria-describedby) */
+function FieldError({ field, text }: { field: Field; text?: string }) {
+  if (!text) return null;
+  return (
+    <small id={`err-${field}`} className="field__error">
+      {text}
+    </small>
+  );
+}
+
 export function HomePickupPage() {
   const { data: me, isPending } = useMe();
   return (
@@ -67,9 +80,24 @@ function BookingForm() {
   const [photo, setPhoto] = useState<File | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [touched, setTouched] = useState<Set<Field>>(new Set());
+  const [tried, setTried] = useState(false);
+  const touch = (f: Field) => setTouched((t) => new Set(t).add(f));
 
   // A click on the map wins; "Use my location" clears it, so the pin goes where the person is
   const pin = at ?? position.at;
+
+  // Checked as the person goes: a field shows its problem once they have left it, or after "Book"
+  const kgNum = Number(roughKg.replace(",", "."));
+  const errors: Partial<Record<Field, string>> = {
+    ...(chosen.length === 0 && { streams: "Choose which bins the items belong in." }),
+    ...(!(kgNum >= 5 && kgNum <= 500) && { kg: "Home pickups are for 5 to 500 kg. Less fits a drop-off point." }),
+    ...(address.trim().length < 3 && { address: "Enter the address the collector should come to." }),
+    ...(!pin && { pin: "Put the pin on your home: click the map, or use your location." }),
+    ...(!photo && { photo: "Add a photo of the items, so the collector knows what to bring." }),
+  };
+  const shown = (f: Field) => ((tried || touched.has(f)) && errors[f]) || undefined;
+  const invalid = (f: Field) => (shown(f) ? { "aria-invalid": true, "aria-describedby": `err-${f}` } : {});
 
   const toast = useToast();
   const book = useMutation({
@@ -86,13 +114,15 @@ function BookingForm() {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    const kgNum = Number(roughKg.replace(",", "."));
-    if (chosen.length === 0) return setProblem("Choose which bins the items belong in.");
-    if (!(kgNum >= 5 && kgNum <= 500))
-      return setProblem("Home pickups are for 5 to 500 kg. Less fits a drop-off point.");
-    if (address.trim().length < 3) return setProblem("Enter the address the collector should come to.");
-    if (!pin) return setProblem("Put the pin on your home: click the map, or use your location.");
-    if (!photo) return setProblem("Add a photo of the items, so the collector knows what to bring.");
+    setTried(true);
+    const first = FIELDS.find((f) => errors[f]);
+    if (first) {
+      // Say the first problem, and put the cursor where it can be fixed
+      setProblem(errors[first]!);
+      document.getElementById(`field-${first}`)?.focus();
+      return;
+    }
+    if (!pin || !photo) return;
     setProblem(null);
     book.mutate({ streams: chosen, rough_kg: kgNum, address, lat: pin[0], lng: pin[1], day, slot, note, photo });
   }
@@ -101,7 +131,7 @@ function BookingForm() {
     <section className="account__section" aria-labelledby="book-head">
       <h2 id="book-head">What, where and when</h2>
       <form className="form form--grid form--in-section" onSubmit={submit} noValidate>
-        <fieldset className="bins-fieldset">
+        <fieldset className="bins-fieldset" id="field-streams" tabIndex={-1} {...invalid("streams")}>
           <legend>Which bins do the items belong in?</legend>
           {streams.isPending && <Spinner label="Loading bins…" />}
           {streams.data?.map((s) => (
@@ -109,26 +139,50 @@ function BookingForm() {
               <input
                 type="checkbox"
                 checked={chosen.includes(s.key)}
-                onChange={(e) => setChosen(e.target.checked ? [...chosen, s.key] : chosen.filter((k) => k !== s.key))}
+                onChange={(e) => {
+                  setChosen(e.target.checked ? [...chosen, s.key] : chosen.filter((k) => k !== s.key));
+                  touch("streams");
+                }}
               />
               <BinBadge bin={s.key} />
               <span className="muted small-print">{s.name}</span>
             </label>
           ))}
+          <FieldError field="streams" text={shown("streams")} />
         </fieldset>
         <label className="field">
           <span>About how much, in kg</span>
-          <input className="input" inputMode="decimal" value={roughKg} onChange={(e) => setRoughKg(e.target.value)} />
+          <input
+            id="field-kg"
+            className="input"
+            inputMode="decimal"
+            value={roughKg}
+            onChange={(e) => setRoughKg(e.target.value)}
+            onBlur={() => touch("kg")}
+            {...invalid("kg")}
+          />
+          <FieldError field="kg" text={shown("kg")} />
           <small className="field__help">A guess is fine. Points come from the collector’s scale, not from this.</small>
         </label>
         <label className="field">
           <span>Address</span>
-          <input className="input" maxLength={200} value={address} onChange={(e) => setAddress(e.target.value)} />
+          <input
+            id="field-address"
+            className="input"
+            maxLength={200}
+            autoComplete="street-address"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            onBlur={() => touch("address")}
+            {...invalid("address")}
+          />
+          <FieldError field="address" text={shown("address")} />
           <small className="field__help">Only you, admins and the collector who takes the pickup see it.</small>
         </label>
         <div className="field">
           <span>Your home on the map</span>
           <Button
+            id="field-pin"
             small
             variant="secondary"
             onClick={() => {
@@ -136,17 +190,22 @@ function BookingForm() {
               position.locate();
             }}
             busy={position.busy}
+            {...invalid("pin")}
           >
             <LocateFixed size={16} aria-hidden /> Use my location
           </Button>
           {position.problem && <small className="field__help">{position.problem}</small>}
+          <FieldError field="pin" text={shown("pin")} />
         </div>
         <MapView
           className="map--picker"
           label="Click your home to put the pin there"
           pins={[]}
           picked={pin}
-          onPick={setAt}
+          onPick={(where) => {
+            setAt(where);
+            touch("pin");
+          }}
         />
         <label className="field">
           <span>Day</span>
@@ -184,9 +243,11 @@ function BookingForm() {
             <Camera size={18} aria-hidden />
             {photo ? "Change the photo" : "Add a photo"}
             <input
+              id="field-photo"
               type="file"
               accept="image/*"
               aria-label="Photo of the items"
+              {...invalid("photo")}
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) {
@@ -200,6 +261,7 @@ function BookingForm() {
             />
           </label>
           {photo && <small className="field__help">Photo added</small>}
+          <FieldError field="photo" text={shown("photo")} />
         </div>
         {problem && (
           <p role="alert" className="notice">
@@ -207,7 +269,7 @@ function BookingForm() {
           </p>
         )}
         {book.error && <ErrorNote>{book.error.message}</ErrorNote>}
-        <div className="actions">
+        <div className="actions actions--sticky">
           <Button type="submit" busy={book.isPending || preparing}>
             Book the pickup
           </Button>
@@ -223,14 +285,24 @@ function MyPickups() {
   const toast = useToast();
   const cancel = useMutation({
     mutationFn: homeApi.cancel,
-    onSuccess: () => toast("Pickup cancelled"),
+    onSuccess: (p) =>
+      toast("Pickup cancelled", {
+        action: {
+          label: "Undo",
+          run: () =>
+            homeApi.restore(p.id).then(
+              () => qc.invalidateQueries({ queryKey: ["home", "mine"] }),
+              (e: Error) => toast(e.message),
+            ),
+        },
+      }),
     onSettled: () => qc.invalidateQueries({ queryKey: ["home", "mine"] }),
   });
   return (
     <section className="account__section" aria-labelledby="mine-head">
       <h2 id="mine-head">Your pickups</h2>
       {list.isPending && <Skeleton label="Loading your pickups…" lines={3} />}
-      {list.error && <ErrorNote>{list.error.message}</ErrorNote>}
+      {list.error && <ErrorNote onRetry={() => void list.refetch()}>{list.error.message}</ErrorNote>}
       {cancel.error && <ErrorNote>{cancel.error.message}</ErrorNote>}
       {list.data && list.data.length === 0 && <p className="empty">You have not booked a pickup yet.</p>}
       {list.data && list.data.length > 0 && (

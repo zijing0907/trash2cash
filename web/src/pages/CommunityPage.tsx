@@ -27,7 +27,7 @@ export function CommunityPage() {
         </p>
       </header>
       {page.isPending && <Skeleton label="Adding it all up…" variant="block" />}
-      {page.error && <ErrorNote>{page.error.message}</ErrorNote>}
+      {page.error && <ErrorNote onRetry={() => void page.refetch()}>{page.error.message}</ErrorNote>}
       {page.data && (
         <>
           {page.data.is_demo && (
@@ -250,7 +250,7 @@ function Confusing() {
         residents whose drop-offs were mostly weighed there. An item shows once at least 3 different people are in it.
       </p>
       {data.isPending && <Skeleton label="Looking through the scans…" />}
-      {data.error && <ErrorNote>{data.error.message}</ErrorNote>}
+      {data.error && <ErrorNote onRetry={() => void data.refetch()}>{data.error.message}</ErrorNote>}
       {data.data && <ConfusionTables c={data.data} />}
     </section>
   );
