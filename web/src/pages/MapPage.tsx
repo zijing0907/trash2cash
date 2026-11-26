@@ -6,7 +6,8 @@ import { Link } from "react-router";
 import { BinBadge } from "../components/BinBadge";
 import { FillBar } from "../components/FillBar";
 import { MapView, type Pin } from "../components/MapView";
-import { Button, ErrorNote, Spinner } from "../components/ui";
+import { Skeleton } from "../components/Skeleton";
+import { Button, ErrorNote } from "../components/ui";
 import { api } from "../lib/api";
 import { fillLine, howKnown, reportLine } from "../lib/certainty";
 import { day, km } from "../lib/format";
@@ -14,6 +15,7 @@ import { distanceKm, type LatLng } from "../lib/geo";
 import { useMe } from "../lib/hooks";
 import { shrinkPhoto } from "../lib/photo";
 import { useMyPosition } from "../lib/position";
+import { useToast } from "../lib/toast";
 import type { MapBin, MapPoint } from "../lib/types";
 
 /** What the forecast says, always called an estimate */
@@ -70,7 +72,7 @@ export function MapPage() {
       </header>
       {position.problem && <ErrorNote>{position.problem}</ErrorNote>}
 
-      {map.isPending && <Spinner label="Loading the drop-off points…" />}
+      {map.isPending && <Skeleton label="Loading the drop-off points…" variant="block" />}
       {map.error && <ErrorNote>{map.error.message}</ErrorNote>}
       {map.data && points.length === 0 && (
         <p className="empty">No drop-off points are open yet. Once an admin adds one, it shows up here.</p>
@@ -91,7 +93,7 @@ export function MapPage() {
             />
             <ol className="places">
               {points.map((p, i) => (
-                <Place key={p.id} n={i + 1} point={p} distance={p.km} selected={p.id === selected} onSelect={choose} />
+                <Place key={p.id} n={i + 1} i={i} point={p} distance={p.km} selected={p.id === selected} onSelect={choose} />
               ))}
             </ol>
           </div>
@@ -107,6 +109,7 @@ export function MapPage() {
 
 function Place(props: {
   n: number;
+  i: number;
   point: MapPoint;
   distance: number | null;
   selected: boolean;
@@ -115,7 +118,11 @@ function Place(props: {
   const { point: p } = props;
   const now = new Date();
   return (
-    <li id={`point-${p.id}`} className={props.selected ? "place is-selected" : "place"}>
+    <li
+      id={`point-${p.id}`}
+      className={props.selected ? "place is-selected" : "place"}
+      style={{ "--i": props.i } as React.CSSProperties}
+    >
       <div className="place__head">
         <span className="figure-num place__n">{props.n}</span>
         <div>
@@ -175,10 +182,12 @@ function ReportBin({ pointId, bin }: { pointId: number; bin: MapBin }) {
   const [level, setLevel] = useState<"full" | "overflowing">("full");
   const [photo, setPhoto] = useState<File | null>(null);
   const [preparing, setPreparing] = useState(false); // the photo is being made smaller; send it once it is ready
+  const toast = useToast();
   const send = useMutation({
     mutationFn: () => api.reportBin(pointId, bin.stream_key, level, photo),
     onSuccess: () => {
       setOpen(false);
+      toast(`Thanks: the ${bin.stream_name.toLowerCase()} bin is reported ${level}.`);
       void qc.invalidateQueries({ queryKey: ["map"] });
     },
   });

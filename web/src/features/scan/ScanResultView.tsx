@@ -172,6 +172,7 @@ export function ScanResultView({ result, file, photoUrl, zoom, onReset }: Props)
       <div className="panel">
         <PhotoWithBox
           src={photoUrl}
+          morph="scan-photo"
           box={result.crop_box}
           label={result.zoomed ? "Found the item here" : "What the model saw"}
         />
@@ -202,6 +203,7 @@ function Verdict({
           {confidence !== null && ` · ${percent(confidence)} sure`}. It goes in the
         </p>
         <h2>{b.title}</h2>
+        {confidence !== null && <Meter value={confidence} />}
       </div>
       <div className="answer__body">
         <p>{b.where}</p>
@@ -209,8 +211,8 @@ function Verdict({
           <div>
             <p className="label">Before you bin it</p>
             <ul>
-              {c.tips.map((t) => (
-                <li key={t}>
+              {c.tips.map((t, i) => (
+                <li key={t} style={{ "--i": i } as React.CSSProperties}>
                   <Check size={16} aria-hidden />
                   {t}
                 </li>
@@ -252,6 +254,7 @@ function BinVerdict({
             : `We can’t tell exactly what it is, but we’re ${percent(confidence)} sure of the bin. It goes in the`}
         </p>
         <h2>{b.title}</h2>
+        <Meter value={confidence} />
       </div>
       <div className="answer__body">
         <p>{b.where}</p>
@@ -259,8 +262,8 @@ function BinVerdict({
           <div>
             <p className="label">Before you bin it</p>
             <ul>
-              {tips.map((t) => (
-                <li key={t}>
+              {tips.map((t, i) => (
+                <li key={t} style={{ "--i": i } as React.CSSProperties}>
                   <Check size={16} aria-hidden />
                   {t}
                 </li>
@@ -270,6 +273,15 @@ function BinVerdict({
         )}
       </div>
     </div>
+  );
+}
+
+/** How sure, as a thin bar that fills in paper on the bin's colour; the words above say the number. */
+function Meter({ value }: { value: number }) {
+  return (
+    <span className="answer__meter" aria-hidden>
+      <span style={{ "--v": value } as React.CSSProperties} />
+    </span>
   );
 }
 
