@@ -71,7 +71,7 @@ export function ScanPage() {
                 checked={zoom}
                 onChange={setZoom}
                 title="Find the item for me"
-                text="Searches about 20 crops of the photo. Slower, and its confidence is optimistic."
+                text="Also checks about 20 crops of the photo and blends in the five it is surest about. Slower."
               />
               <Toggle
                 checked={donate}

@@ -52,7 +52,7 @@ class PredictResponse(BaseModel):
     unsure: bool = Field(description="True if confidence < threshold: ask the user to pick from top3 or retake")
     threshold: float
     crop_box: list[int] = Field(description="[left, top, right, bottom] of the part of the photo the model saw")
-    zoomed: bool = Field(description="True if zoom search picked the crop; its confidence is not calibrated")
+    zoomed: bool = Field(description="True if zoom search was used: probs blend the centre crop and the zoom consensus")
     tta: bool = Field(description="Whether test-time augmentation was used")
     probs: dict[str, float] = Field(description="Probability of every class")
     dhash: str = Field(description="Difference hash of the photo (16 hex characters), for the repeat-photo flag")
@@ -143,7 +143,7 @@ def model_info(request: Request):
 async def predict(
     request: Request,
     file: UploadedPhoto,
-    zoom: Annotated[bool, Query(description="Search for the item in a big photo (slower, not calibrated)")] = False,
+    zoom: Annotated[bool, Query(description="Blend in the 5 surest of ~20 crops (slower)")] = False,
     tta: Annotated[bool | None, Query(description="Test-time augmentation; empty = use_tta from meta.json")] = None,
 ):
     t0 = time.perf_counter()

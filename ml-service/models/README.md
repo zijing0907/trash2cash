@@ -1,6 +1,7 @@
 # Model files
 
-This folder holds the export written by notebooks 01 and 03 (`AML_Waste_Project/export/` on Google
+This folder holds the export written by notebooks 01 and 03 (the files from the Colab run of 24 Nov 2026 are
+committed) (`AML_Waste_Project/export/` on Google
 Drive, or `waste_models_export.zip`). Copy these files here:
 
 | File | Needed? | In git? |

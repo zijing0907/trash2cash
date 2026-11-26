@@ -123,25 +123,63 @@ def test_low_confidence_is_not_sure(robust_clf):
     assert len(r["top3"]) == 3  # the UI offers these three to choose from
 
 
-def test_zoom_winner_is_used(cnn_clf, monkeypatch):
-    """notebook 02's rule: if zoom search finds a crop the model is surer about, use it."""
-    sure = np.zeros(len(CLASS_NAMES), dtype="float32")
-    sure[CLASS_NAMES.index("metal")] = 0.999
-    crop = np.full((FAKE_IMG_SIZE, FAKE_IMG_SIZE, 3), 200, dtype=np.uint8)
-    monkeypatch.setattr(model_module, "zoom_search", lambda model, im: (sure, (10, 5, 50, 45), crop))
+class CropModel:
+    """Stands in for the Keras model inside zoom_search: answers each crop with a row of prepared probabilities."""
 
-    r = cnn_clf.classify(a_photo(120, 90), zoom=True)
+    input_shape = (None, FAKE_IMG_SIZE, FAKE_IMG_SIZE, 3)
+
+    def __init__(self, rows):
+        self.rows = rows
+
+    def predict(self, x, verbose=0, batch_size=64):
+        out = np.full((len(x), len(CLASS_NAMES)), 1 / len(CLASS_NAMES), dtype="float32")
+        for i, row in self.rows.items():
+            out[i] = row
+        return out
+
+
+def probs_for(**classes) -> np.ndarray:
+    p = np.zeros(len(CLASS_NAMES), dtype="float32")
+    for name, v in classes.items():
+        p[CLASS_NAMES.index(name.replace("_", "-"))] = v
+    return p
+
+
+def test_zoom_search_averages_the_five_surest_crops():
+    """notebook 02: one odd crop cannot decide alone; the 5 most confident crops are averaged, and the box is the
+    crop that shows the consensus class best."""
+    rows = {0: probs_for(battery=1.0)}  # one very confident odd crop
+    rows.update({i: probs_for(metal=0.8, plastic=0.2) for i in (1, 2, 3)})
+    rows[4] = probs_for(metal=0.9, plastic=0.1)  # the clearest view of the consensus class
+    im = a_photo(120, 90)
+    cons, box, crop = model_module.zoom_search(CropModel(rows), im)
+    assert CLASS_NAMES[int(cons.argmax())] == "metal"
+    assert cons[CLASS_NAMES.index("metal")] == pytest.approx((0.8 * 3 + 0.9) / 5)
+    assert box == model_module.zoom_boxes(120, 90)[4]
+    assert crop.shape == (FAKE_IMG_SIZE, FAKE_IMG_SIZE, 3)
+
+
+def test_zoom_blends_the_centre_crop_with_the_consensus(cnn_clf, monkeypatch):
+    """notebook 02's app: with zoom, the answer is an even blend of the plain view and the zoom consensus."""
+    cons = probs_for(metal=1.0)
+    crop = np.full((FAKE_IMG_SIZE, FAKE_IMG_SIZE, 3), 200, dtype=np.uint8)
+    monkeypatch.setattr(model_module, "zoom_search", lambda model, im: (cons, (10, 5, 50, 45), crop))
+
+    im = a_photo(120, 90)
+    plain = predict(cnn_clf.model, model_input(im))
+    r = cnn_clf.classify(im, zoom=True)
     assert r["zoomed"] is True
     assert r["crop_box"] == [10, 5, 50, 45]
-    assert r["unsure"] is False  # the fake cnn model is confident on any crop
+    for c in ("plastic", "metal"):
+        expected = 0.5 * plain[CLASS_NAMES.index(c)] + 0.5 * cons[CLASS_NAMES.index(c)]
+        assert r["probs"][c] == pytest.approx(expected, abs=1e-6)
 
 
-def test_zoomed_answer_below_the_threshold_is_still_not_sure(robust_clf, monkeypatch):
-    """Milestone 2 decision (docs/decisions.md): unlike notebook 02, a zoomed answer below the threshold
-    stays "not sure". The zoomed confidence is already the best of ~20 crops."""
-    better = np.full(len(CLASS_NAMES), 0.2, dtype="float32")  # beats the plain crop, still below 0.55
+def test_zoomed_answer_below_the_threshold_is_not_sure(robust_clf, monkeypatch):
+    """The same threshold applies with and without zoom (notebook 02 and docs/decisions.md 2.6)."""
+    cons = np.full(len(CLASS_NAMES), 1 / len(CLASS_NAMES), dtype="float32")
     crop = np.full((FAKE_IMG_SIZE, FAKE_IMG_SIZE, 3), 200, dtype=np.uint8)
-    monkeypatch.setattr(model_module, "zoom_search", lambda model, im: (better, (10, 5, 50, 45), crop))
+    monkeypatch.setattr(model_module, "zoom_search", lambda model, im: (cons, (10, 5, 50, 45), crop))
 
     r = robust_clf.classify(a_photo(), zoom=True)
     assert r["zoomed"] is True
@@ -149,11 +187,8 @@ def test_zoomed_answer_below_the_threshold_is_still_not_sure(robust_clf, monkeyp
     assert r["unsure"] is True
 
 
-def test_zoom_loser_falls_back_to_the_centre_crop(cnn_clf, monkeypatch):
-    unsure_probs = np.full(len(CLASS_NAMES), 1 / len(CLASS_NAMES), dtype="float32")
-    crop = np.zeros((FAKE_IMG_SIZE, FAKE_IMG_SIZE, 3), dtype=np.uint8)
-    monkeypatch.setattr(model_module, "zoom_search", lambda model, im: (unsure_probs, (0, 0, 10, 10), crop))
-    r = cnn_clf.classify(a_photo(120, 90), zoom=True)
+def test_without_zoom_the_box_is_the_centre_square(cnn_clf):
+    r = cnn_clf.classify(a_photo(120, 90), zoom=False)
     assert r["zoomed"] is False
     assert r["crop_box"] == list(center_box(120, 90))
 

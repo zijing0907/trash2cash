@@ -6,8 +6,8 @@ textile, food waste or general waste), and the resident earns points when an ope
 verifies the items at a drop-off point. Admins see how full each drop-off point is and when it will
 need a pickup.
 
-> **Status:** work in progress. Done: the ML service (Milestone 1), and the API and web app with the
-> full scan flow (Milestone 2). Next: drop-off deposits, points and rewards (Milestone 3), the admin
+> **Status:** work in progress. Done: the ML service (Milestone 1), the API and web app with the full scan
+> flow (Milestone 2), and the trained model served by the app. Next: drop-off deposits, points and rewards (Milestone 3), the admin
 > dashboard with pickup forecasts and a live demo (Milestone 4), and the model card with real-photo
 > results (Milestone 5).
 
@@ -81,7 +81,32 @@ and a production build for the web app, and a Docker build of every image.
 
 ## Model card
 
-TODO (Milestone 5): dataset, test metrics read from `meta.json`, real-photo results and known limitations.
+The app serves **CNN-R** (`CNN-R@3764b8d2`): a convolutional network with 1.24 million weights, trained from
+random weights (no pretrained model). Numbers below come from the training notebooks' own outputs; the raw
+logs are in [`ml/results/`](ml/results/).
+
+| Test | Best FCNN (FCNN-B32) | Best plain CNN (CNN-A) | **CNN-R (served)** |
+|---|---|---|---|
+| Garbage-12 test split, macro F1 | 0.601 | 0.864 | 0.764 |
+| Garbage-12 test split, accuracy | 0.675 | 0.888 | 0.807 |
+| Same test objects pasted on unseen backgrounds, macro F1 | 0.184 | 0.267 | **0.556** |
+| Accuracy lost when only the background changes | 28 points | 56 points | **14 points** |
+
+- **Data:** 15,515 images in 12 classes ([Garbage Classification](https://www.kaggle.com/datasets/mostafaabla/garbage-classification));
+  15,493 after removing exact duplicates and copies filed under two classes. Near-duplicates are kept in one
+  split, so no picture is in both training and test. Split 70 / 15 / 15, stratified by class.
+- **CNN against fully-connected network:** CNN-A beats the best FCNN by 0.26 macro F1 (95% interval 0.24 to 0.29;
+  McNemar p < 10⁻⁹⁰).
+- **Why CNN-R, not the higher-scoring CNN-A:** the dataset's photos are mostly studio shots, and CNN-A partly
+  learned "white background means battery or trash". CNN-R was trained with backgrounds swapped, objects shrunk
+  and moved, and real-world photos from RealWaste and Garbage Classification v2. Against CNN-B, the same network
+  without those changes, it loses nothing measurable on the test split (−0.005 macro F1, 95% interval −0.025 to
+  +0.015) and gains 0.33 on unseen backgrounds. Phone photos look more like the second test.
+- **"Not sure":** below 63% confidence the app asks instead of answering; 0.63 is the lowest confidence at which
+  CNN-R was right at least 90% of the time on validation data.
+- **Not measured yet:** accuracy on our own phone photos (notebook 02, part 4, has no photos yet). That is the
+  number that matters most for real use.
+- **Limits:** one item per photo; 12 classes only; it cannot tell whether a container is clean or which plastic it is.
 
 ## Acknowledgements
 

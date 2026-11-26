@@ -16,3 +16,10 @@ with full history, is [zijing0907/machine-learning](https://github.com/zijing090
 
 If a notebook changes the preprocessing, `ml-service/app/preprocessing.py` must change the same way,
 and the parity test (`ml-service/tests/test_parity.py`) must be regenerated.
+
+## Results
+
+[`results/notebook-01-logs/`](results/notebook-01-logs/) holds notebook 01's logs from the Colab run that produced
+the served models: the data audit, every run's validation and test scores (`results_all_runs.csv`), per-class
+scores, the FCNN against CNN tests, the white-background shortcut check, compute used and each run's training
+history. Notebook 03's robust-model results are summarised in the main README's model card.

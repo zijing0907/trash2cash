@@ -161,7 +161,7 @@ export function ModelPage() {
             </li>
             <li>It cannot tell whether a container is clean, or which plastic type it is.</li>
             <li>Trained mostly on tidy photos. Cluttered real-life scenes are harder; that’s why it says “not sure”.</li>
-            <li>With zoom search, the shown confidence is the best of about 20 crops, so it is optimistic.</li>
+            <li>With zoom search, the answer blends the whole photo with the five crops the model was surest about, so it leans a little optimistic.</li>
           </ul>
         </div>
         <p className="credits">
