@@ -7,9 +7,9 @@ import { BinBadge } from "../components/BinBadge";
 import { FillBar } from "../components/FillBar";
 import { RoleGate } from "../components/RoleGate";
 import { Button, ErrorNote, Spinner } from "../components/ui";
-import { api } from "../lib/api";
+import { api, pickupPhotoUrl } from "../lib/api";
 import { dateTime, day, kgNum, km, ringgit } from "../lib/format";
-import type { BinStatus, Board, BoardBin } from "../lib/types";
+import type { BinStatus, Board, BoardBin, JobStatus } from "../lib/types";
 
 const STATUS: Record<BinStatus, string> = {
   due: "Collect now",
@@ -50,6 +50,7 @@ function BoardScreen() {
             </p>
           )}
           <Run board={board.data} />
+          <JobsTable />
           <Bins board={board.data} />
           <Month board={board.data} />
         </>
@@ -66,10 +67,30 @@ function usePickup() {
   });
 }
 
+function useOffer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (pointIds: number[]) => api.offerJobs(pointIds),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin", "board"] });
+      void qc.invalidateQueries({ queryKey: ["admin", "jobs"] });
+    },
+  });
+}
+
+const JOB_STATE: Record<JobStatus, string> = {
+  open: "Offered",
+  taken: "Taken",
+  done: "Done",
+  cancelled: "Withdrawn",
+};
+
 function Run({ board }: { board: Board }) {
   const pickup = usePickup();
+  const offer = useOffer();
   const [confirm, setConfirm] = useState<number | null>(null);
   const stops = board.run.stops;
+  const unoffered = stops.filter((s) => !s.job).map((s) => s.point_id);
   return (
     <section className="account__section" aria-labelledby="run-head">
       <h2 id="run-head">Today’s run</h2>
@@ -77,10 +98,20 @@ function Run({ board }: { board: Board }) {
         <p className="empty">Nothing needs collecting today or tomorrow.</p>
       ) : (
         <>
-          <p className="small-print muted">
-            {stops.length} {stops.length === 1 ? "stop" : "stops"}, {km(board.run.total_km)}{" "}
-            between them. Most urgent first, then always the nearest next stop.
-          </p>
+          <div className="run__intro">
+            <p className="small-print muted">
+              {stops.length === 1
+                ? "1 stop."
+                : `${stops.length} stops, ${km(board.run.total_km)} between them. Most urgent first, then always the nearest next stop.`}
+            </p>
+            {unoffered.length > 0 && (
+              <Button small onClick={() => offer.mutate(unoffered)} busy={offer.isPending}>
+                <Truck size={16} aria-hidden /> Offer {unoffered.length === stops.length ? "the run" : `${unoffered.length} more`} to
+                collectors
+              </Button>
+            )}
+          </div>
+          {offer.error && <ErrorNote>{offer.error.message}</ErrorNote>}
           <ol className="run">
             {stops.map((s, i) => {
               const point = board.points.find((p) => p.id === s.point_id)!;
@@ -99,7 +130,12 @@ function Run({ board }: { board: Board }) {
                       <BinBadge key={b} bin={b} />
                     ))}
                   </span>
-                  {confirm === s.point_id ? (
+                  {s.job ? (
+                    <span className={`status ${s.job.status === "taken" ? "status--soon" : ""}`}>
+                      {JOB_STATE[s.job.status]}
+                      {s.job.collector && ` by ${s.job.collector}`}
+                    </span>
+                  ) : confirm === s.point_id ? (
                     <span className="confirm-inline">
                       <span>Emptied all {ids.length}?</span>
                       <Button small onClick={() => pickup.mutate(ids, { onSuccess: () => setConfirm(null) })} busy={pickup.isPending}>
@@ -120,6 +156,91 @@ function Run({ board }: { board: Board }) {
           </ol>
           {pickup.error && <ErrorNote>{pickup.error.message}</ErrorNote>}
         </>
+      )}
+    </section>
+  );
+}
+
+/** Jobs offered to collectors, with what the scale said next to what was weighed in, and the photos */
+function JobsTable() {
+  const qc = useQueryClient();
+  const jobs = useQuery({ queryKey: ["admin", "jobs"], queryFn: api.adminJobs, refetchInterval: 60_000 });
+  const cancel = useMutation({
+    mutationFn: (id: number) => api.cancelJob(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin", "jobs"] });
+      void qc.invalidateQueries({ queryKey: ["admin", "board"] });
+    },
+  });
+  return (
+    <section className="account__section" aria-labelledby="jobs-head">
+      <h2 id="jobs-head">Collector jobs</h2>
+      {jobs.isPending && <Spinner label="Loading jobs…" />}
+      {jobs.error && <ErrorNote>{jobs.error.message}</ErrorNote>}
+      {cancel.error && <ErrorNote>{cancel.error.message}</ErrorNote>}
+      {jobs.data && jobs.data.length === 0 && (
+        <p className="empty">No jobs in the last two weeks. Offer today’s run to collectors to start one.</p>
+      )}
+      {jobs.data && jobs.data.length > 0 && (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">Drop-off point</th>
+                <th scope="col">State</th>
+                <th scope="col">Bins: on the scale, and weighed in</th>
+                <th scope="col">
+                  <span className="visually-hidden">Action</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {jobs.data.map((j) => (
+                <tr key={j.id}>
+                  <td>
+                    <span className="table__main">{j.point.name}</span>
+                    <span className="muted small-print">Offered {dateTime(j.created_at)}</span>
+                  </td>
+                  <td>
+                    <span className={`status ${j.status === "open" ? "status--soon" : ""}`}>{JOB_STATE[j.status]}</span>
+                    <span className="muted small-print status__last">
+                      {j.collector ? j.collector.name : "No collector yet"}
+                      {j.finished_at && `, ${dateTime(j.finished_at)}`}
+                    </span>
+                  </td>
+                  <td>
+                    <ul className="jobitems">
+                      {j.items.map((it) => (
+                        <li key={it.id}>
+                          <BinBadge bin={it.stream_key} />
+                          <span className="small-print">
+                            {it.state === "collected"
+                              ? `${kgNum(it.collected_kg ?? 0)} on the scale, ${kgNum(it.weighed_in_kg ?? 0)} weighed in`
+                              : it.state === "skipped"
+                                ? `Skipped: ${it.skipped_reason}`
+                                : `About ${kgNum(it.expected_kg)} to collect`}
+                          </span>
+                          {it.has_photo && it.pickup_id && (
+                            <a className="link small-print" href={pickupPhotoUrl(it.pickup_id)} target="_blank" rel="noreferrer">
+                              Photo
+                            </a>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </td>
+                  <td>
+                    {(j.status === "open" || j.status === "taken") && (
+                      <Button small variant="quiet" onClick={() => cancel.mutate(j.id)} busy={cancel.isPending && cancel.variables === j.id}>
+                        Withdraw
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );

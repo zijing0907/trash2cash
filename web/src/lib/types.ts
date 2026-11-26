@@ -40,7 +40,7 @@ export function binLevelAnswer(scan: Scan): string | null {
   return !scan.user_label && scan.unsure && scan.bin_unsure === false && scan.top_bin ? scan.top_bin : null;
 }
 
-export type Role = "resident" | "operator" | "admin";
+export type Role = "resident" | "operator" | "admin" | "collector";
 
 export interface User {
   id: number;
@@ -197,6 +197,14 @@ export interface BoardBin {
   pickup_on: string | null;
   status: BinStatus;
   last_pickup_at: string | null;
+  last_deposit_at?: string | null;
+}
+
+/** The open or taken job at a point, if any (Phase 4) */
+export interface ActiveJob {
+  id: number;
+  status: JobStatus;
+  collector: string | null;
 }
 
 export interface BoardPoint {
@@ -207,6 +215,7 @@ export interface BoardPoint {
   status: BinStatus;
   next_pickup_on: string | null;
   bins: BoardBin[];
+  job?: ActiveJob | null;
 }
 
 export interface Board {
@@ -219,6 +228,7 @@ export interface Board {
       name: string;
       km_from_previous: number;
       bins: string[];
+      job?: ActiveJob | null;
     }[];
     total_km: number;
   };
@@ -241,3 +251,74 @@ export interface Staff {
   role: Role;
   drop_point_id: number | null;
 }
+
+// ---- Phase 4: the public map and pickup jobs
+
+export interface MapBin {
+  stream_key: string;
+  stream_name: string;
+  capacity_kg: number;
+  /** The sum of weighed drop-offs since the bin was last emptied */
+  fill_kg: number;
+  fill_ratio: number;
+  rate_kg_per_day: number;
+  full_on: string | null;
+  status: BinStatus;
+  last_deposit_at: string | null;
+  emptied_at: string | null;
+}
+
+export interface MapPoint {
+  id: number;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  is_demo: boolean;
+  status: BinStatus;
+  bins: MapBin[];
+}
+
+export interface DropOffMap {
+  generated_at: string;
+  points: MapPoint[];
+}
+
+export type JobStatus = "open" | "taken" | "done" | "cancelled";
+
+export interface JobItem {
+  id: number;
+  container_id: number;
+  stream_key: string;
+  stream_name: string;
+  capacity_kg: number;
+  /** The board's fill when the job was offered */
+  expected_kg: number;
+  state: "to_do" | "collected" | "skipped";
+  /** What the truck's scale said */
+  collected_kg: number | null;
+  /** What the weighed drop-offs added up to when it was collected */
+  weighed_in_kg: number | null;
+  pickup_id: number | null;
+  has_photo: boolean;
+  skipped_reason: string | null;
+  finished_at: string | null;
+}
+
+export interface Job {
+  id: number;
+  status: JobStatus;
+  point: { id: number; name: string; address: string; lat: number; lng: number; is_demo: boolean };
+  created_at: string;
+  taken_at: string | null;
+  finished_at: string | null;
+  collector: { id: number; name: string } | null;
+  items: JobItem[];
+}
+
+export interface CollectorJobs {
+  open: Job[];
+  mine: Job[];
+  done: Job[];
+}
+

@@ -2315,3 +2315,276 @@ figcaption {
     display: none;
   }
 }
+
+/* ---- Map (/map), collector jobs (/collect), Phase 4 ------------------------------------------------- */
+
+.map {
+  position: relative;
+  /* Leaflet's panes use z-indexes up to 1000; keep them inside the map, under the page's own bars */
+  isolation: isolate;
+  border: var(--rule-hair) solid var(--color-rule-2);
+  background: var(--color-paper-2);
+}
+.map__canvas {
+  height: min(62svh, 560px);
+  background: var(--color-paper-2);
+  font-family: var(--font-body);
+}
+.form--grid > .map--picker {
+  grid-column: 1 / -1;
+}
+.map--picker .map__canvas {
+  height: 280px;
+  cursor: crosshair;
+}
+.map--route .map__canvas {
+  height: min(45svh, 380px);
+}
+.map__note {
+  padding: var(--space-xs) var(--space-sm);
+  border-top: var(--rule-hair) solid var(--color-rule-2);
+  background: var(--color-paper);
+  color: var(--color-ink-2);
+  font-size: var(--text-sm);
+}
+/* The base map in grey, so the pins and the route carry the meaning */
+.map .leaflet-tile-pane {
+  filter: grayscale(1) contrast(0.92) brightness(1.04);
+}
+.map .leaflet-container {
+  background: var(--color-paper-2);
+}
+.map .leaflet-bar,
+.map .leaflet-bar a {
+  border-radius: 0;
+}
+.map .leaflet-bar {
+  border: var(--rule-hair) solid var(--color-ink);
+  box-shadow: none;
+}
+.map .leaflet-bar a {
+  color: var(--color-ink);
+}
+.map .leaflet-control-attribution {
+  background: color-mix(in oklab, var(--color-paper) 88%, transparent);
+  color: var(--color-ink-2);
+  font-size: var(--text-xs);
+}
+.map .leaflet-control-attribution a {
+  color: var(--color-ink);
+}
+.map-route {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 3;
+  stroke-dasharray: 6 6;
+}
+
+/* Square pins, like the board's status tags: due is solid ink, soon an ink outline, the rest grey */
+.pin {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--color-rule-2);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: 700 var(--text-sm) / 1 var(--font-display);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.pin--due {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.pin--soon {
+  border-color: var(--color-ink);
+}
+.pin.is-selected {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.pin--me {
+  width: 18px;
+  height: 18px;
+  border: 3px solid var(--color-paper);
+  background: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-ink);
+}
+.pin--picked {
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--color-paper);
+  background: var(--color-ink);
+  box-shadow: 0 0 0 1px var(--color-ink);
+}
+
+.mapgrid {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: var(--space-xl);
+  align-items: start;
+  margin-block: var(--space-lg);
+}
+.mapgrid__map {
+  position: sticky;
+  top: var(--space-md);
+}
+.places {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: var(--rule-heavy) solid var(--color-ink);
+}
+.place {
+  display: grid;
+  gap: var(--space-md);
+  padding-block: var(--space-md) var(--space-lg);
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+  scroll-margin-top: var(--space-xl);
+}
+.place.is-selected {
+  box-shadow: inset 4px 0 0 var(--color-accent);
+  padding-left: var(--space-md);
+}
+.place__head {
+  display: grid;
+  grid-template-columns: var(--space-xl) minmax(0, 1fr) auto;
+  gap: var(--space-sm);
+  align-items: baseline;
+}
+.place__n {
+  font-size: var(--text-2xl);
+}
+.place h2 {
+  font-size: var(--text-title);
+  line-height: 1.15;
+}
+.place__name {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.place__name:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-underline-offset: 0.15em;
+}
+.place__bins {
+  display: grid;
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0 0 0 calc(var(--space-xl) + var(--space-sm));
+  list-style: none;
+}
+.place__bins li {
+  display: grid;
+  gap: var(--space-2xs);
+}
+
+.run__intro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-lg);
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+.jobitems {
+  display: grid;
+  gap: var(--space-2xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.jobitems li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs) var(--space-sm);
+  align-items: baseline;
+}
+
+.jobs {
+  display: grid;
+  gap: var(--space-lg);
+  margin: var(--space-lg) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.job {
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-md) 0 var(--space-lg);
+  border-top: var(--rule-heavy) solid var(--color-ink);
+}
+.job__head {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  gap: var(--space-sm);
+  align-items: baseline;
+}
+.job h3 {
+  font-size: var(--text-title);
+}
+.job__bins {
+  display: grid;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bintask {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--space-sm) var(--space-lg);
+  align-items: start;
+  padding: var(--space-md);
+  background: var(--color-paper-2);
+}
+.bintask.is-done {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  background: none;
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+}
+.bintask > .notice,
+.bintask > [role="alert"] {
+  grid-column: 1 / -1;
+}
+.bintask__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: end;
+}
+.bintask__form .field {
+  flex: 1 1 10rem;
+}
+.bintask__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+@media (max-width: 60rem) {
+  .mapgrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-lg);
+  }
+  .mapgrid__map {
+    position: static;
+  }
+  .map__canvas {
+    height: 46svh;
+  }
+  .place__bins {
+    padding-left: 0;
+  }
+  .bintask {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

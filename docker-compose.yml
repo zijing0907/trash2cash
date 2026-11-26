@@ -24,7 +24,7 @@ services:
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-8}
       SCAN_RATE_PER_MIN: ${SCAN_RATE_PER_MIN:-20}
     volumes:
-      - media:/data/media # photos users chose to donate
+      - media:/data/media # photos users chose to donate, and collectors' photos of emptied bins
     depends_on:
       db:
         condition: service_healthy
