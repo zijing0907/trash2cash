@@ -198,6 +198,11 @@ class PickupIn(BaseModel):
     container_ids: list[int] = Field(min_length=1, max_length=50)
 
 
+class HomeLineIn(BaseModel):
+    stream_key: str
+    weight_kg: float = Field(gt=0, le=500, description="Weighed at the door, in kg")
+
+
 class JobOfferIn(BaseModel):
     point_ids: list[int] = Field(min_length=1, max_length=50, description="Drop-off points to offer, one job each")
 

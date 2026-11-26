@@ -83,7 +83,7 @@ def my_points(
         item = LedgerItem(id=e.id, delta=e.delta, reason=e.reason.value, created_at=e.created_at)
         if e.deposit_id in deps:
             d = deps[e.deposit_id]
-            item.point_name = d.point.name
+            item.point_name = d.point.name if d.point else "Home pickup"
             item.lines = [LineOut(stream_key=ln.stream_key, weight_g=ln.weight_g, points=ln.points) for ln in d.lines]
         if e.redemption_id in reds:
             item.reward_name = reds[e.redemption_id].reward.name

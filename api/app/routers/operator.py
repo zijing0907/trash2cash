@@ -32,7 +32,7 @@ def deposit_out(d: Deposit, resident: User, balance_after: int | None = None) ->
         "points": d.points,
         "resident_name": resident.display_name,
         "member_code": resident.member_code,
-        "point_name": d.point.name,
+        "point_name": d.point.name if d.point else "Home pickup",
         "lines": [LineOut(stream_key=ln.stream_key, weight_g=ln.weight_g, points=ln.points) for ln in d.lines],
         "balance_after": balance_after,
     }

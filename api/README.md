@@ -47,6 +47,10 @@ serve the web app and proxy `/api` here (no CORS needed).
 | `GET /api/pickups/{id}/photo` | admin, the collector who took it | The photo of the emptied bin |
 | `POST /api/reports` | logged in | Form: `point_id`, `stream_key`, `level` (`full` or `overflowing`), optional `photo`. Once per person per bin every 6 hours, at most 20 a day |
 | `GET /api/reports/{id}/photo` | admin | A report's photo |
+| `POST /api/home-pickups`, `GET /api/home-pickups/mine`, `POST .../{id}/cancel` | logged in | Book a home pickup (form: `streams`, `rough_kg`, `address`, `lat`, `lng`, `day`, `slot`, `note`, `photo`; 5 to 500 kg, up to 14 days ahead, two open at a time); see and cancel your own |
+| `GET /api/collector/home-pickups`, `POST .../{id}/take`, `.../release`, `.../collect`, `.../missed` | collector | Waiting pickups by area only; take one (only one collector can); weigh per bin at the door (points for the resident); or say why it was missed |
+| `GET /api/home-pickups/{id}/photo` | the resident, admins, the collector who took it | The resident's photo of the items |
+| `GET /api/admin/home-pickups` | admin | Open pickups and the last two weeks' |
 | `PUT /api/admin/streams/{key}`, `GET/POST/PUT /api/admin/rewards`, `GET /api/admin/staff`, `PUT /api/admin/users/{id}/role` | admin | Rates and prices, rewards, roles |
 
 Interactive docs: http://localhost:8000/api/docs.
