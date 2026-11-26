@@ -66,6 +66,12 @@ class Scan(Base):
     top3: Mapped[list[dict]] = mapped_column(JSON)
     dhash: Mapped[str] = mapped_column(String(16))
     latency_ms: Mapped[float] = mapped_column(Float)
+    # Bin-level answer (Phase 2): the likeliest bin, its probability, and whether that is below the threshold.
+    # When unsure is true but bin_unsure is false, the app named the bin without naming the item.
+    # NULL for scans made before it existed.
+    top_bin: Mapped[str | None] = mapped_column(String(40))
+    bin_confidence: Mapped[float | None] = mapped_column(Float)
+    bin_unsure: Mapped[bool | None] = mapped_column(Boolean)
 
     # What the user said the item really is: a class name, or "other" for items outside the 12 classes.
     # These labels (with donated photos) are the material for retraining.

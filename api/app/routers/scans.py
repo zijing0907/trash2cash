@@ -79,6 +79,10 @@ def create_scan(
         top3=result["top3"],
         dhash=result["dhash"],
         latency_ms=result["latency_ms"],
+        # An older ml-service has no bin-level answer: leave it empty rather than guess
+        top_bin=result.get("top_bin"),
+        bin_confidence=result.get("bin_confidence"),
+        bin_unsure=result.get("bin_unsure"),
     )
     db.add(scan)
     db.flush()  # assigns scan.id
@@ -94,6 +98,8 @@ def create_scan(
         "class_index": result["class_index"],
         "threshold": result["threshold"],
         "crop_box": result["crop_box"],
+        "battery_chance": result.get("battery_chance", 0.0),
+        "battery_warning": result.get("battery_warning", False),
     }
 
 
@@ -164,23 +170,22 @@ def my_scans(
 
 @router.get("/scans/summary", response_model=ScanSummary)
 def my_summary(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    """Scans per bin for the dashboard. A scan the user re-labelled counts under the bin of their label."""
+    """Scans per bin for the dashboard. A scan the user re-labelled counts under the bin of their label; one where
+    the model was sure of the bin but not the item counts under that bin (the bin the app named)."""
     try:
         bins: dict[str, str] = ml(request).model_info().get("bins", {})
     except HTTPException:  # ml-service down: the summary still works, re-labelled scans count as "other"
         bins = {}
-    rows = db.execute(
-        select(Scan.predicted_bin, Scan.predicted_class, Scan.user_label, func.count())
-        .where(Scan.user_id == user.id)
-        .group_by(Scan.predicted_bin, Scan.predicted_class, Scan.user_label)
-    ).all()
+    cols = (Scan.predicted_bin, Scan.top_bin, Scan.unsure, Scan.bin_unsure, Scan.user_label)
+    rows = db.execute(select(*cols, func.count()).where(Scan.user_id == user.id).group_by(*cols)).all()
     counts: dict[str, int] = {}
     total = labelled = 0
-    for pred_bin, _, label, n in rows:
+    for pred_bin, top_bin, unsure, bin_unsure, label, n in rows:
         total += n
         if label:
             labelled += n
-        b = bins.get(label, "other") if label else (pred_bin or "other")
+        named = top_bin if unsure and bin_unsure is False and top_bin else pred_bin
+        b = bins.get(label, "other") if label else (named or "other")
         counts[b] = counts.get(b, 0) + n
     return {
         "total": total,
