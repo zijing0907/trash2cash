@@ -13,7 +13,10 @@ serve the web app and proxy `/api` here (no CORS needed).
 | `app/ml_client.py` | Calls ml-service; turns its failures into clear errors |
 | `app/security.py` | Argon2id passwords, signed session cookie, role checks |
 | `app/ratelimit.py` | Per-IP limit on the endpoints that run the model |
-| `app/models.py` | Tables: `users`, `scans` |
+| `app/models.py` | Tables: users, scans, streams, drop points, containers, deposits, the points ledger, rewards, redemptions, pickups |
+| `app/points.py` | Member codes, deposits, balances, redemptions |
+| `app/forecast.py`, `app/board.py` | The fill forecast and pickup run (pure functions), and the admin board built from them |
+| `app/cli.py`, `app/demo.py` | `python -m app.cli create-user` and `seed-demo` |
 | `migrations/` | Alembic migrations (`alembic upgrade head` runs on container start) |
 
 ## Endpoints
@@ -30,6 +33,12 @@ serve the web app and proxy `/api` here (no CORS needed).
 | `GET /api/scans/summary` | logged in | Own scans per bin |
 | `GET /api/model` | anyone | Classes, bins, threshold and test metrics of the served model |
 | `GET /api/health` | anyone | Database and ml-service status |
+| `GET /api/streams`, `GET /api/points` | anyone | The bins (points and buy-back price per kg) and the drop-off points |
+| `GET /api/me/card`, `GET /api/me/points`, `GET /api/me/redemptions` | logged in | Member code and balance, the points ledger, vouchers |
+| `GET /api/rewards`, `POST /api/rewards/{id}/redeem` | anyone / logged in | Rewards; redeeming locks the user's row, then checks balance and stock |
+| `GET /api/operator/residents/{code}`, `POST /api/operator/deposits`, `GET /api/operator/deposits` | operator, admin | Find a member, record weighed bins (points added in the same commit), today's deposits |
+| `GET /api/admin/board`, `POST /api/admin/pickups` | admin | Fill, forecast and today's run for every bin; record emptied bins |
+| `PUT /api/admin/streams/{key}`, `GET/POST/PUT /api/admin/rewards`, `GET /api/admin/staff`, `PUT /api/admin/users/{id}/role` | admin | Rates and prices, rewards, roles |
 
 Interactive docs: http://localhost:8000/api/docs.
 Errors always look like `{"detail": {"code": "...", "message": "..."}}`, as in ml-service.

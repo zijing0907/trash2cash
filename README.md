@@ -7,7 +7,8 @@ verifies the items at a drop-off point. Admins see how full each drop-off point 
 need a pickup.
 
 > **Status:** work in progress. Done: the ML service (Milestone 1), the API and web app with the full scan
-> flow (Milestone 2), and the trained model served by the app. Next: drop-off deposits, points and rewards (Milestone 3), the admin
+> flow (Milestone 2), the trained model, drop-off deposits with points and rewards (Milestone 3) and the
+> admin pickup board (Milestone 4). Next: a live demo and real-photo results. Next: drop-off deposits, points and rewards (Milestone 3), the admin
 > dashboard with pickup forecasts and a live demo (Milestone 4), and the model card with real-photo
 > results (Milestone 5).
 
@@ -21,6 +22,14 @@ need a pickup.
   (and delete it again). These labels are the material for retraining.
 - **Accounts and history:** guests can scan; signed-in residents get a history and a per-bin summary.
 - **Bin guide** with search, and a **model page** that reads the served model's own metrics.
+- **Points that cannot be faked:** each resident has a member QR code. Staff at a drop-off point scan it (or type
+  the code), weigh what was handed in per bin, and only then are points added, to an append-only ledger.
+  Photos alone never earn points.
+- **Rewards:** residents spend points on rewards an admin sets up and get a voucher code to collect them;
+  two redemptions at the same moment cannot spend the same points.
+- **Pickup board for admins:** every bin's fill, how fast it fills (the last two weeks' average) and the day it will
+  be full; bins forecast to pass 90% are due, and today's run orders those drop-off points most urgent first, then
+  nearest next. Also this month's weight, its worth at buy-back prices, deposits and points.
 
 ## Origin
 
@@ -69,6 +78,20 @@ docker compose up --build
 Then open http://localhost:8080. The API docs are at http://localhost:8080/api/docs and the ML service
 can be tried on its own at http://localhost:8001/docs. The first start takes a few minutes (TensorFlow
 is large).
+
+To try the staff screens, load the demo data (sample drop-off points, 40 residents and six weeks of deposits,
+labelled as demo data in the app). In a second terminal:
+
+```bash
+docker compose exec api python -m app.cli seed-demo
+```
+
+Then log in as `admin.demo@example.com`, `operator1.demo@example.com` or `resident01.demo@example.com`, password
+`demo-password`. For a real setup, create the first admin instead:
+
+```bash
+docker compose exec api python -m app.cli create-user --email you@example.com --name "Your name" --role admin
+```
 
 Development without Docker, with hot reload, is described in each service's README:
 [`ml-service/`](ml-service/README.md), [`api/`](api/README.md), [`web/`](web/README.md).

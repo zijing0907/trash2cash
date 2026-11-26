@@ -1,5 +1,32 @@
 [
  {
+  "mode": "build",
+  "scope": "app",
+  "shape": "app screen",
+  "theme": "editorial",
+  "axes": "light/display-condensed/chromatic-green",
+  "hero": "none (app)",
+  "nav": "edge-aligned over a heavy ink rule, by role",
+  "footer": "letter close",
+  "imagery": "none",
+  "photos": [],
+  "entry": "tables",
+  "fingerprint": "Sticky or pinned|Two-column asymmetric|Hairline|Solid|None|None",
+  "sections": [
+   "Member card + points ledger",
+   "Rewards rows + where to hand in",
+   "Weigh-in slip + today table",
+   "Pickup board: run, every bin, month figures",
+   "Setup: rates, rewards, staff"
+  ],
+  "signature": "the pickup board: bin fill bars in their own colours with the day each will be full",
+  "waived": [
+   "28b"
+  ],
+  "prompt": "Drop-off deposits weighed by staff, points and rewards for residents, and an admin pickup board for a recycling app",
+  "date": "2026-11-24"
+ },
+ {
   "mode": "redesign",
   "depth": "full",
   "scope": "site",

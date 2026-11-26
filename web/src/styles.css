@@ -1,4 +1,4 @@
-/* Hallmark · shape: Narrative Workflow (/), Long Document (/model), app screen (/scan, /guide, /me, /login, /signup) · genre: editorial · theme: Editorial (deal 1/3, seed recycling-helper-malaysian-households-70c4·0ea85530·2026-11-23·r0) · redesign: full
+/* Hallmark · shape: Narrative Workflow (/), Long Document (/model), app screen (/scan, /guide, /me, /rewards, /operator, /admin, /admin/setup, /login, /signup) · genre: editorial · theme: Editorial (deal 1/3, seed recycling-helper-malaysian-households-70c4·0ea85530·2026-11-23·r0) · redesign: full
  * hero: Ledge (/), Banner (/model) · nav: edge-aligned over a heavy ink rule (draw: floating pill; the theme refuses pills) · footer: letter close · imagery: screenshots 4 (the app, captured in its own states) · signature: the answer block, a square in the bin's own colour naming the bin
  * axes: light/display-condensed/chromatic-green · posture: restrained (the seven bin colours are data tokens, used only to name a bin) · contrast: pass · fold: pass · draw: d16030 · job: try
  * hero-review: in-thread (no subagent) · folded into the finish review · finish-review: in-thread · 3 findings · 1 resolved (hero captures staggered), 2 to the owner (the hero line, stand-in captures) · v2.0.0 */
@@ -15,6 +15,7 @@
 /* Hallmark · reworded "Trained from scratch", "Says “not sure”", "Shows where it looked" from headings to terms in a list · 3 names the icon-tile grid they headed */
 /* Hallmark · reworded "Point your phone at a household item. A neural network we trained from scratch tells you which Malaysian recycling bin it belongs in and how to prepare it, and it says so when it isn't sure." to "Point your phone at any item to find its Malaysian recycling bin." · 58 names a hero paragraph past twelve words */
 /* Hallmark · reworded "Source ↗" to the source's name · 63 names an arrow glued to link text */
+/* Hallmark · waive 28b · below the fold and not the LCP: it only exists after the Scan QR button is pressed · the weigh-in video is the live camera feed for reading a member QR code, so a poster frame has nothing to show */
 /* Hallmark · answered F1 · "No, it's…" keeps its straight apostrophe because the scan tests match that exact string, and tests are not edited by a redesign */
 /* Hallmark · dismissed F20 · the credits line spans both columns under the two lists on purpose; it is not a third list */
 /* Hallmark · answered F15 · app screens part their two panes by 64px and the home page's columns by 32px; the scan screen's photo and answer need the wider gutter */

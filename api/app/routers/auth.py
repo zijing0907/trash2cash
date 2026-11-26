@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..errors import api_error
 from ..models import Role, User
+from ..points import new_member_code
 from ..schemas import LoginIn, RegisterIn, UserOut
 from ..security import clear_session_cookie, hash_password, optional_user, set_session_cookie, verify_password
 
@@ -19,6 +20,7 @@ def register(body: RegisterIn, request: Request, response: Response, db: Session
         display_name=body.display_name.strip(),
         password_hash=hash_password(body.password),
         role=Role.resident,  # operators and admins are created by an admin, never by sign-up
+        member_code=new_member_code(db),
     )
     db.add(user)
     try:

@@ -14,7 +14,7 @@ from .config import Settings, load_settings
 from .db import make_engine, make_sessionmaker
 from .ml_client import MLClient
 from .ratelimit import RateLimiter
-from .routers import auth, meta, scans
+from .routers import account, admin, auth, meta, operator, scans
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -39,8 +39,8 @@ def create_app(settings: Settings | None = None, ml_client: MLClient | None = No
 
     app = FastAPI(
         title="Trash2Cash API",
-        version="0.2.0",
-        description="Scans, accounts and (from Milestone 3) deposits and points. Calls ml-service for the model.",
+        version="0.3.0",
+        description="Scans, accounts, drop-off deposits, points, rewards and the admin pickup board. Calls ml-service.",
         lifespan=lifespan,
         docs_url="/api/docs",
         redoc_url=None,
@@ -70,6 +70,9 @@ def create_app(settings: Settings | None = None, ml_client: MLClient | None = No
     api.include_router(auth.router)
     api.include_router(scans.router)
     api.include_router(meta.router)
+    api.include_router(account.router)
+    api.include_router(operator.router)
+    api.include_router(admin.router)
     app.include_router(api)
     return app
 

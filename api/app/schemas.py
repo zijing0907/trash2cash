@@ -26,6 +26,8 @@ class UserOut(BaseModel):
     display_name: str
     role: Role
     created_at: datetime
+    member_code: str
+    drop_point_id: int | None
 
 
 class ClassProb(BaseModel):
@@ -78,3 +80,133 @@ class ScanSummary(BaseModel):
     total: int
     labelled: int
     by_bin: list[BinCount]
+
+
+# ---- Milestone 3: points, rewards, deposits ------------------------------------------------------------
+
+
+class StreamOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    key: str = Field(description="The bin, as named in the model's meta.json, e.g. 'blue bin'")
+    name: str
+    points_per_kg: int
+    price_sen_per_kg: int = Field(description="Buy-back price in sen (RM 0.01) per kg")
+
+
+class DropPointOut(BaseModel):
+    id: int
+    name: str
+    address: str
+    lat: float
+    lng: float
+    is_demo: bool
+    streams: list[str] = Field(description="Keys of the bins this point holds")
+
+
+class CardOut(BaseModel):
+    display_name: str
+    member_code: str
+    balance: int
+
+
+class LineOut(BaseModel):
+    stream_key: str
+    weight_g: int
+    points: int
+
+
+class LedgerItem(BaseModel):
+    id: int
+    delta: int
+    reason: str
+    created_at: datetime
+    point_name: str | None = None
+    lines: list[LineOut] = []
+    reward_name: str | None = None
+
+
+class PointsPage(BaseModel):
+    balance: int
+    items: list[LedgerItem]
+    next_before: int | None = Field(description="Pass as ?before= for older entries; null on the last page")
+
+
+class RewardOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    description: str
+    cost_points: int
+    stock: int | None
+    active: bool
+    is_demo: bool
+
+
+class RedemptionOut(BaseModel):
+    id: uuid.UUID
+    reward_name: str
+    cost_points: int
+    code: str
+    created_at: datetime
+
+
+class ResidentOut(BaseModel):
+    display_name: str
+    member_code: str
+    balance: int
+
+
+class DepositLineIn(BaseModel):
+    stream_key: str
+    weight_kg: float = Field(gt=0, le=100, description="Weighed on the scale, in kg (0.001 kg steps)")
+
+
+class DepositIn(BaseModel):
+    member_code: str = Field(min_length=4, max_length=12)
+    point_id: int | None = Field(default=None, description="Admins only; operators use their own point")
+    lines: list[DepositLineIn] = Field(min_length=1, max_length=8)
+
+
+class DepositOut(BaseModel):
+    id: uuid.UUID
+    created_at: datetime
+    points: int
+    resident_name: str
+    member_code: str
+    point_name: str
+    lines: list[LineOut]
+    balance_after: int | None = None
+
+
+# ---- Milestone 4: admin --------------------------------------------------------------------------------
+
+
+class PickupIn(BaseModel):
+    container_ids: list[int] = Field(min_length=1, max_length=50)
+
+
+class StreamIn(BaseModel):
+    points_per_kg: int = Field(ge=0, le=10_000)
+    price_sen_per_kg: int = Field(ge=0, le=1_000_000)
+
+
+class RewardIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    description: str = Field(default="", max_length=200)
+    cost_points: int = Field(gt=0, le=1_000_000)
+    stock: int | None = Field(default=None, ge=0)
+    active: bool = True
+
+
+class StaffOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    email: str
+    display_name: str
+    role: Role
+    drop_point_id: int | None
+
+
+class RoleIn(BaseModel):
+    role: Role
+    drop_point_id: int | None = None
