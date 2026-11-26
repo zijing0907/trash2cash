@@ -51,6 +51,8 @@ serve the web app and proxy `/api` here (no CORS needed).
 | `GET /api/collector/home-pickups`, `POST .../{id}/take`, `.../release`, `.../collect`, `.../missed` | collector | Waiting pickups by area only; take one (only one collector can); weigh per bin at the door (points for the resident); or say why it was missed |
 | `GET /api/home-pickups/{id}/photo` | the resident, admins, the collector who took it | The resident's photo of the items |
 | `GET /api/admin/home-pickups` | admin | Open pickups and the last two weeks' |
+| `GET /api/community` | anyone | This month's weighed-in totals, the last 8 weeks, by drop-off point (and home pickups) and by bin |
+| `GET /api/community/confusion?point_id=` | anyone | From 90 days of signed-in scans: items asked about most, model/people disagreements, "something else"; rows need 3 different people |
 | `PUT /api/admin/streams/{key}`, `GET/POST/PUT /api/admin/rewards`, `GET /api/admin/staff`, `PUT /api/admin/users/{id}/role` | admin | Rates and prices, rewards, roles |
 
 Interactive docs: http://localhost:8000/api/docs.

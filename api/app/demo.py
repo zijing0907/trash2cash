@@ -22,6 +22,7 @@ from .models import (
     Redemption,
     Reward,
     Role,
+    Scan,
     Stream,
     User,
 )
@@ -70,11 +71,71 @@ def add_demo_collectors(db: Session) -> list[str]:
     return added
 
 
+# Phase 7: made-up scans for the community page's confusion figures, marked is_demo. How often each item is
+# scanned, and which item the model sometimes takes it for (a greasy pizza box read as cardboard is "trash").
+DEMO_ITEMS = {"plastic": 18, "paper": 12, "cardboard": 12, "metal": 10, "trash": 10, "biological": 8,
+              "white-glass": 6, "green-glass": 5, "brown-glass": 4, "clothes": 6, "shoes": 4, "battery": 5}  # fmt: skip
+LOOKS_LIKE = {
+    "trash": ["cardboard", "plastic", "paper"], "plastic": ["trash", "metal", "white-glass"],
+    "paper": ["cardboard", "trash"], "cardboard": ["paper", "trash"], "metal": ["plastic", "battery"],
+    "white-glass": ["plastic", "green-glass"], "green-glass": ["white-glass", "brown-glass"],
+    "brown-glass": ["green-glass"], "clothes": ["shoes", "trash"], "shoes": ["clothes"],
+    "battery": ["metal", "trash"], "biological": ["trash", "paper"],
+}  # fmt: skip
+DEMO_BINS = {"paper": "blue bin", "cardboard": "blue bin", "brown-glass": "brown bin", "green-glass": "brown bin",
+             "white-glass": "brown bin", "plastic": "orange bin", "metal": "orange bin",
+             "battery": "e-waste collection", "clothes": "textile donation", "shoes": "textile donation",
+             "biological": "food waste", "trash": "general waste"}  # fmt: skip
+
+
+def add_demo_scans(db: Session, rng: random.Random, now: datetime, days: int) -> int:
+    """A few scans per demo resident: mostly right, some "not sure" answered by the resident, some corrected, a few
+    "something else". Added once; also to a demo seeded before Phase 7."""
+    if db.scalar(select(Scan.id).where(Scan.is_demo)) is not None:
+        return 0
+    residents = db.scalars(select(User).where(User.email.like("resident%.demo@example.com"))).all()
+    items, weights = list(DEMO_ITEMS), list(DEMO_ITEMS.values())
+    added = 0
+    for r in residents:
+        for _ in range(rng.randint(3, 12)):
+            true = rng.choices(items, weights)[0]
+            roll = rng.random()
+            if roll < 0.62:  # right and sure; some residents confirm
+                pred, conf, label = true, rng.uniform(0.7, 0.97), true if rng.random() < 0.4 else None
+            elif roll < 0.8:  # not sure; most residents pick the right one
+                pred = true if rng.random() < 0.45 else rng.choice(LOOKS_LIKE[true])
+                conf, label = rng.uniform(0.3, 0.6), true if rng.random() < 0.85 else None
+            elif roll < 0.94:  # sure but wrong; most residents correct it
+                pred, conf = rng.choice(LOOKS_LIKE[true]), rng.uniform(0.64, 0.9)
+                label = true if rng.random() < 0.9 else None
+            else:  # none of the 12 kinds
+                pred, conf, label = rng.choice(items), rng.uniform(0.3, 0.8), "other"
+            unsure = conf < 0.63
+            others = rng.sample([c for c in items if c != pred], 2)
+            rest = 1 - conf
+            db.add(Scan(
+                user_id=r.id, created_at=now - timedelta(days=rng.uniform(0, days)), model_version="CNN-R@demo",
+                predicted_class=pred, predicted_bin=DEMO_BINS[pred], confidence=round(conf, 3), unsure=unsure,
+                top3=[{"class": pred, "prob": round(conf, 3)}, {"class": others[0], "prob": round(rest * 0.6, 3)},
+                      {"class": others[1], "prob": round(rest * 0.3, 3)}],
+                dhash=f"{rng.getrandbits(64):016x}", latency_ms=rng.uniform(80, 400), user_label=label,
+                labelled_at=now if label else None, top_bin=DEMO_BINS[pred], bin_confidence=round(conf, 3),
+                bin_unsure=unsure, is_demo=True,
+            ))  # fmt: skip
+            added += 1
+    return added
+
+
 def seed_demo(db: Session, days: int = 42, seed: int = 7) -> dict:
     if db.scalar(select(DropPoint.id).where(DropPoint.is_demo)):
         added = add_demo_collectors(db)
+        scans = add_demo_scans(db, random.Random(seed), datetime.now(UTC).replace(microsecond=0), days)
         db.commit()
-        return {"skipped": "Demo data already exists.", **({"added collectors": added} if added else {})}
+        return {
+            "skipped": "Demo data already exists.",
+            **({"added collectors": added} if added else {}),
+            **({"added demo scans": scans} if scans else {}),
+        }
     rng = random.Random(seed)
     now = datetime.now(UTC).replace(microsecond=0)
     start = now - timedelta(days=days)
@@ -177,6 +238,8 @@ def seed_demo(db: Session, days: int = 42, seed: int = 7) -> dict:
         db.flush()
         db.add(LedgerEntry(user_id=r.id, delta=-reward.cost_points, reason=LedgerReason.redemption,
                            redemption_id=red.id, created_at=at))  # fmt: skip
+    db.flush()
+    add_demo_scans(db, rng, now, days)
     db.commit()
     return {
         "points": len(points),

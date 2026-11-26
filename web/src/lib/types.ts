@@ -388,3 +388,37 @@ export interface CollectorHomePickups {
   done: HomePickup[];
 }
 
+// ---- Phase 7: the community page
+
+export interface Community {
+  today: string;
+  is_demo: boolean;
+  month: {
+    from: string;
+    kg_total: number;
+    deposits: number;
+    residents: number;
+    home_kg: number;
+    home_kg_last_month: number;
+  };
+  /** Oldest first; the last one is the week so far */
+  weeks: { from: string; kg: number; partial: boolean }[];
+  places: { id: number; name: string; kg_month: number; kg_last_month: number }[];
+  streams: { stream_key: string; stream_name: string; kg_month: number }[];
+}
+
+export interface Confusion {
+  point_id: number | null;
+  days: number;
+  /** A row needs this many different people */
+  min_people: number;
+  people: number;
+  scans: number;
+  is_demo: boolean;
+  asked: { item: string; people: number; scans: number }[];
+  disagreements: { model_said: string; people_said: string; people: number; scans: number }[];
+  /** Rows with too few people to show */
+  hidden: number;
+  unknown: { people: number; scans: number } | null;
+}
+

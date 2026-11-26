@@ -11,7 +11,8 @@ need a pickup.
 > pickup board (Milestone 4), voucher collection and drop-off point setup (Phase 1), the live camera scan
 > with bin-level answers and the battery warning (Phase 2), and the drop-off map with pickup jobs for collectors
 > (Phase 4), "bin full" reports with a forecast that corrects itself (Phase 6a), and home pickup requests
-> (Phase 6b). Next: Bahasa Melayu, a community page and the confusion map.
+> (Phase 6b), and the community page with what people find confusing (Phase 7). Next: animations and UI polish,
+> then the model in the browser and a public link. Bahasa Melayu is set aside for now.
 
 ## What works today
 
@@ -51,6 +52,10 @@ need a pickup.
 - **Home pickups:** for 5 kg or more, a resident books a collector with a photo, a rough weight, a pin on the map
   and a time of day. Collectors see only the area until one takes it; then they see the address, weigh everything
   at the door, and the resident gets points for those weights, never for the guess.
+- **Community page:** what everyone recycled this month and week by week, by drop-off point and by bin, never by
+  person. Below it, what people find confusing: the items asked about most, where people and the model disagreed,
+  and how often an item was none of the 12 kinds, for every place or for the residents of one. A row shows only
+  once three different people are in it.
 
 ## Origin
 

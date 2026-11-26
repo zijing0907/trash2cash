@@ -1,6 +1,8 @@
 import type {
   Board,
   Card,
+  Community,
+  Confusion,
   CollectorHomePickups,
   CollectorJobs,
   DepositOut,
@@ -131,6 +133,11 @@ export const api = {
   staff: (q: string) => request<Staff[]>(`/admin/staff?q=${encodeURIComponent(q)}`),
   setRole: (userId: number, body: { role: string; drop_point_id: number | null }) =>
     request<Staff>(`/admin/users/${userId}/role`, json("PUT", body)),
+
+  // The community page (Phase 7)
+  community: () => request<Community>("/community"),
+  confusion: (pointId: number | null) =>
+    request<Confusion>(`/community/confusion${pointId ? `?point_id=${pointId}` : ""}`),
 
   // The public map (Phase 4) and reports from the public (Phase 6)
   dropOffMap: () => request<DropOffMap>("/map"),

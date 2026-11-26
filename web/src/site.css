@@ -2461,6 +2461,9 @@ figcaption {
   line-height: 1.15;
 }
 .place__name {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px; /* a comfortable tap target, like the app's other controls */
   padding: 0;
   border: 0;
   background: none;
@@ -2648,4 +2651,145 @@ figcaption {
   margin-top: 0;
   padding-top: 0;
   border-top: 0;
+}
+
+/* ---- Community page (/community), Phase 7 ------------------------------------------------------------ */
+
+/* Weekly columns: one series in ink, square ends like every mark in this system, a baseline rule, the
+   numbers on the high point and the latest week, the rest on hover or focus, and a table below */
+.weeks {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  align-items: end;
+  margin: var(--space-md) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.week {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-xs);
+  outline-offset: 2px;
+}
+.week__plot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  height: 180px;
+  border-bottom: var(--rule-hair) solid var(--color-ink);
+}
+.week__bar {
+  width: min(24px, 60%);
+  min-height: 1px;
+  background: var(--color-ink-2);
+}
+.week.is-partial .week__bar {
+  border: 2px solid var(--color-ink-2);
+  background: repeating-linear-gradient(135deg, var(--color-paper-3) 0 4px, var(--color-paper) 4px 8px);
+}
+.week__value {
+  margin-bottom: var(--space-2xs);
+  color: var(--color-ink);
+  font: 500 var(--text-xs) / 1.2 var(--font-display);
+  white-space: nowrap;
+}
+.week__day {
+  color: var(--color-ink-2);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+.week__tip {
+  position: absolute;
+  bottom: calc(100% - var(--space-lg));
+  z-index: 2;
+  display: none;
+  padding: var(--space-2xs) var(--space-xs);
+  border: var(--rule-hair) solid var(--color-ink);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+.week:hover .week__tip,
+.week:focus-visible .week__tip {
+  display: block;
+}
+.week:hover .week__bar,
+.week:focus-visible .week__bar {
+  background: var(--color-ink);
+}
+.week.is-partial:hover .week__bar,
+.week.is-partial:focus-visible .week__bar {
+  background: repeating-linear-gradient(135deg, var(--color-paper-3) 0 4px, var(--color-paper) 4px 8px);
+}
+
+/* Horizontal bars in a table cell: the length is the share of the largest row */
+.hbar {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) 6rem;
+  gap: var(--space-sm);
+  align-items: center;
+  min-width: 14rem;
+}
+.hbar .figure-num {
+  text-align: right;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.hbar__track {
+  height: 10px;
+  background: var(--color-paper-3);
+}
+.hbar__bar {
+  display: block;
+  height: 100%;
+  background: var(--color-ink-2);
+}
+.hbar__bar--bin {
+  background: var(--bin);
+}
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  padding-top: var(--space-sm);
+  border-top: var(--rule-heavy) solid var(--color-ink);
+  gap: var(--space-md) var(--space-xl);
+  align-items: end;
+  justify-content: space-between;
+}
+.field--inline {
+  min-width: 16rem;
+}
+.confusion {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-xl) var(--gap-columns);
+  margin-top: var(--space-md);
+}
+.confusion h3 {
+  font-size: var(--text-title);
+}
+.section-head h2 {
+  font-size: var(--text-3xl);
+}
+.confusion td .binname {
+  margin-top: var(--space-2xs);
+}
+
+@media (max-width: 30rem) {
+  .hbar {
+    grid-template-columns: minmax(3rem, 1fr) 4.5rem;
+    min-width: 9rem;
+  }
+}
+@media (max-width: 60rem) {
+  .confusion {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .week__plot {
+    height: 140px;
+  }
 }

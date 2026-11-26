@@ -3,6 +3,7 @@ import { createBrowserRouter } from "react-router";
 import { Shell } from "./components/Shell";
 import { AccountPage } from "./pages/AccountPage";
 import { AdminBoardPage } from "./pages/AdminBoardPage";
+import { CommunityPage } from "./pages/CommunityPage";
 import { GuidePage } from "./pages/GuidePage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage, SignupPage } from "./pages/AuthPages";
@@ -19,6 +20,7 @@ export const routes = [
       { index: true, element: <HomePage /> },
       { path: "scan", element: <ScanPage /> },
       { path: "guide", element: <GuidePage /> },
+      { path: "community", element: <CommunityPage /> },
       // The map library is only downloaded by the screens that show a map
       { path: "map", lazy: () => import("./pages/MapPage").then((m) => ({ Component: m.MapPage })) },
       { path: "collect", lazy: () => import("./pages/CollectorPage").then((m) => ({ Component: m.CollectorPage })) },

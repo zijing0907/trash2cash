@@ -1,4 +1,4 @@
-import { BookOpen, Brain, Gift, History, House, LayoutGrid, LogOut, MapPinned, Scale, ScanLine, Truck } from "lucide-react";
+import { BookOpen, Brain, Gift, History, House, LayoutGrid, LogOut, MapPinned, Scale, ScanLine, Truck, Users } from "lucide-react";
 import { NavLink, Outlet, ScrollRestoration, useNavigate } from "react-router";
 
 import { useLogout, useMe } from "../lib/hooks";
@@ -18,15 +18,16 @@ const LINKS = {
   home: { to: "/", label: "Home", short: "Home", icon: House },
   map: { to: "/map", label: "Map", short: "Map", icon: MapPinned },
   jobs: { to: "/collect", label: "Jobs", short: "Jobs", icon: Truck },
+  community: { to: "/community", label: "Community", short: "Community", icon: Users },
 };
 
 /** Top links by role: staff get their screens; everyone keeps scanning and their account. */
 function navFor(role: Role | undefined) {
-  const { scan, map, guide, model, rewards, weigh, board, jobs, me } = LINKS;
-  if (role === "admin") return [scan, map, rewards, weigh, board, me];
+  const { scan, map, guide, model, rewards, weigh, board, jobs, community, me } = LINKS;
+  if (role === "admin") return [scan, map, community, weigh, board, me];
   if (role === "operator") return [scan, map, guide, rewards, weigh, me];
   if (role === "collector") return [jobs, map, scan, guide, me];
-  return [scan, map, guide, model, rewards, me];
+  return [scan, map, guide, community, model, rewards, me];
 }
 
 /** The phone's five tabs */
@@ -106,6 +107,10 @@ export function Shell() {
             from scratch for UECS2523 Applied Machine Learning.{" "}
             <NavLink to="/model" className="link">
               How the model works
+            </NavLink>
+            .{" "}
+            <NavLink to="/community" className="link">
+              What everyone recycled
             </NavLink>
           </p>
           <p className="colophon__sign">The Trash2Cash team</p>
