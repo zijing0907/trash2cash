@@ -198,6 +198,30 @@ export interface BoardBin {
   status: BinStatus;
   last_pickup_at: string | null;
   last_deposit_at?: string | null;
+  est_fill_kg?: number;
+  correction?: Correction | null;
+  due_because?: "forecast" | "reports" | null;
+  reports?: (BinReports & { photo_ids: number[] }) | null;
+}
+
+/** Phase 6: what collectors' scales showed at this bin against what was weighed in */
+export interface Correction {
+  factor: number;
+  pickups: number;
+  measured_kg: number;
+  weighed_kg: number;
+}
+
+/** Phase 6: reports from the public that still count (since the bin was emptied, last 24 hours) */
+export interface BinReports {
+  /** Different people */
+  count: number;
+  last_at: string;
+  overflowing: boolean;
+  /** Enough people: the bin is due */
+  confirmed: boolean;
+  /** The signed-in person reported it */
+  mine: boolean;
 }
 
 /** The open or taken job at a point, if any (Phase 4) */
@@ -260,7 +284,12 @@ export interface MapBin {
   capacity_kg: number;
   /** The sum of weighed drop-offs since the bin was last emptied */
   fill_kg: number;
+  /** fill_kg scaled by the correction (the same without one). Phase 6 fields are optional: an older API has none */
+  est_fill_kg?: number;
   fill_ratio: number;
+  correction?: Correction | null;
+  due_because?: "forecast" | "reports" | null;
+  reports?: BinReports | null;
   rate_kg_per_day: number;
   full_on: string | null;
   status: BinStatus;

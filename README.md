@@ -10,7 +10,7 @@ need a pickup.
 > flow (Milestone 2), the trained model, drop-off deposits with points and rewards (Milestone 3), the admin
 > pickup board (Milestone 4), voucher collection and drop-off point setup (Phase 1), the live camera scan
 > with bin-level answers and the battery warning (Phase 2), and the drop-off map with pickup jobs for collectors
-> (Phase 4). Next: home pickups, public "bin full" reports and a forecast that corrects itself.
+> (Phase 4), and "bin full" reports with a forecast that corrects itself (Phase 6a). Next: home pickup requests.
 
 ## What works today
 
@@ -41,6 +41,12 @@ need a pickup.
 - **Pickup jobs for collectors (the Grab idea):** the admin offers today's run; a collector takes a job (only one
   can), follows the stops on the map, and for each bin enters what the truck's scale said and photographs the
   empty bin, or says why it could not be emptied. The admin sees the scale's weight next to what was weighed in.
+- **"Bin full" reports, like Waze:** anyone signed in can report a bin full or overflowing, with a photo if they
+  like. One report is a hint on the map; three different people within a day make the bin due and put it in
+  today's run. Each person can report a bin once every six hours, and emptying the bin clears its reports.
+- **A forecast that corrects itself:** once a bin has two measured pickups, its fill and inflow are scaled by what
+  the collectors' scale showed against what was weighed in (people drop things in without weighing), and the map
+  and board say so and by how much.
 
 ## Origin
 

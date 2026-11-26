@@ -7,7 +7,7 @@ import { BinBadge } from "../components/BinBadge";
 import { FillBar } from "../components/FillBar";
 import { RoleGate } from "../components/RoleGate";
 import { Button, ErrorNote, Spinner } from "../components/ui";
-import { api, pickupPhotoUrl } from "../lib/api";
+import { api, pickupPhotoUrl, reportPhotoUrl } from "../lib/api";
 import { dateTime, day, kgNum, km, ringgit } from "../lib/format";
 import type { BinStatus, Board, BoardBin, JobStatus } from "../lib/types";
 
@@ -252,8 +252,9 @@ function Bins({ board }: { board: Board }) {
     <section className="account__section" aria-labelledby="bins-head">
       <h2 id="bins-head">Every bin</h2>
       <p className="small-print muted">
-        Fill is everything weighed in since the bin was last emptied. The forecast extends the last two weeks’ daily
-        average; a bin is due when it is expected to pass 90%.
+        Fill is everything weighed in since the bin was last emptied, scaled by what collectors’ scales showed
+        once a bin has two measured pickups. The forecast extends the last two weeks’ daily average; a bin is due
+        when it is expected to pass 90%, or when three people report it full.
       </p>
       <div className="table-wrap">
         <table className="table board">
@@ -312,13 +313,35 @@ function BinRow(props: {
       <td className="board__fill">
         <FillBar bin={b.stream_key} ratio={b.fill_ratio} label={`${b.stream_name} fill`} />
         <span className="small-print">
-          {kgNum(b.fill_kg)} of {kgNum(b.capacity_kg)}, {Math.round(b.fill_ratio * 100)}%
+          {b.correction
+            ? `About ${kgNum(b.est_fill_kg ?? b.fill_kg)} of ${kgNum(b.capacity_kg)}, ${Math.round(b.fill_ratio * 100)}%`
+            : `${kgNum(b.fill_kg)} of ${kgNum(b.capacity_kg)}, ${Math.round(b.fill_ratio * 100)}%`}
         </span>
+        {b.correction && (
+          <span className="muted small-print status__last">
+            {kgNum(b.fill_kg)} weighed in × {b.correction.factor} from the last {b.correction.pickups} scale weights
+          </span>
+        )}
       </td>
       <td className="num">{b.rate_kg_per_day > 0 ? `${kgNum(b.rate_kg_per_day)} a day` : "None lately"}</td>
       <td>{b.full_on ? day(b.full_on) : "Not forecast"}</td>
       <td>
         <span className={`status status--${b.status}`}>{STATUS[b.status]}</span>
+        {b.reports && (
+          <span className="small-print status__last">
+            {b.due_because === "reports" ? "Due: " : ""}
+            {b.reports.count === 1 ? "1 report" : `${b.reports.count} reports`}
+            {b.reports.overflowing && ", overflowing"}
+            {b.reports.photo_ids.map((id, i) => (
+              <span key={id}>
+                {" "}
+                <a className="link" href={reportPhotoUrl(id)} target="_blank" rel="noreferrer">
+                  photo{b.reports!.photo_ids.length > 1 ? ` ${i + 1}` : ""}
+                </a>
+              </span>
+            ))}
+          </span>
+        )}
         {b.last_pickup_at && (
           <span className="muted small-print status__last">Emptied {dateTime(b.last_pickup_at)}</span>
         )}
