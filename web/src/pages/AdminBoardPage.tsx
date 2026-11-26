@@ -7,7 +7,8 @@ import { BinBadge } from "../components/BinBadge";
 import { FillBar } from "../components/FillBar";
 import { RoleGate } from "../components/RoleGate";
 import { Button, ErrorNote, Spinner } from "../components/ui";
-import { api, pickupPhotoUrl, reportPhotoUrl } from "../lib/api";
+import { api, ApiError, homeApi, homePhotoUrl, pickupPhotoUrl, reportPhotoUrl } from "../lib/api";
+import { HOME_STATE, SLOTS } from "../lib/home";
 import { dateTime, day, kgNum, km, ringgit } from "../lib/format";
 import type { BinStatus, Board, BoardBin, JobStatus } from "../lib/types";
 
@@ -51,6 +52,7 @@ function BoardScreen() {
           )}
           <Run board={board.data} />
           <JobsTable />
+          <HomePickups />
           <Bins board={board.data} />
           <Month board={board.data} />
         </>
@@ -235,6 +237,70 @@ function JobsTable() {
                         Withdraw
                       </Button>
                     )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Home pickups booked by residents (Phase 6b): who, when, which collector, and what was weighed */
+function HomePickups() {
+  const list = useQuery({ queryKey: ["admin", "home"], queryFn: homeApi.forAdmin, refetchInterval: 60_000 });
+  if (list.error instanceof ApiError && list.error.status === 404) return null; // an API from before home pickups
+  return (
+    <section className="account__section" aria-labelledby="home-head">
+      <h2 id="home-head">Home pickups</h2>
+      {list.isPending && <Spinner label="Loading home pickups…" />}
+      {list.error && <ErrorNote>{list.error.message}</ErrorNote>}
+      {list.data && list.data.length === 0 && (
+        <p className="empty">No home pickups in the last two weeks. Residents book them from the map or their account.</p>
+      )}
+      {list.data && list.data.length > 0 && (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">Resident</th>
+                <th scope="col">When</th>
+                <th scope="col">State</th>
+                <th scope="col">Weighed at the door</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.data.map((h) => (
+                <tr key={h.id}>
+                  <td>
+                    <span className="table__main">{h.resident?.name}</span>
+                    <span className="muted small-print">{h.address}</span>
+                  </td>
+                  <td>
+                    <span className="table__main">{day(h.day)}</span>
+                    <span className="muted small-print">{SLOTS[h.slot]}</span>
+                  </td>
+                  <td>
+                    <span className={`status ${h.status === "requested" ? "status--soon" : ""}`}>{HOME_STATE[h.status]}</span>
+                    <span className="muted small-print status__last">
+                      {h.collector ? h.collector.name : "No collector yet"}
+                      {h.missed_reason && `: ${h.missed_reason}`}
+                    </span>
+                  </td>
+                  <td>
+                    {h.status === "done" ? (
+                      <span className="small-print">
+                        {kgNum(h.weighed.reduce((sum, l) => sum + l.weight_g, 0) / 1000)} (they guessed{" "}
+                        {kgNum(h.rough_kg)}), {h.points} points
+                      </span>
+                    ) : (
+                      <span className="muted small-print">About {kgNum(h.rough_kg)}, their guess</span>
+                    )}{" "}
+                    <a className="link small-print" href={homePhotoUrl(h.id)} target="_blank" rel="noreferrer">
+                      Photo
+                    </a>
                   </td>
                 </tr>
               ))}

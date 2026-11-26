@@ -22,6 +22,7 @@ export const routes = [
       // The map library is only downloaded by the screens that show a map
       { path: "map", lazy: () => import("./pages/MapPage").then((m) => ({ Component: m.MapPage })) },
       { path: "collect", lazy: () => import("./pages/CollectorPage").then((m) => ({ Component: m.CollectorPage })) },
+      { path: "pickup", lazy: () => import("./pages/HomePickupPage").then((m) => ({ Component: m.HomePickupPage })) },
       { path: "model", element: <ModelPage /> },
       { path: "me", element: <AccountPage /> },
       { path: "rewards", element: <RewardsPage /> },
