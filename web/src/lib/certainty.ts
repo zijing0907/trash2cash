@@ -3,7 +3,8 @@
  * since the bin was last emptied. Each bin on the map says which fact that rests on and how old it is, and the
  * forecast is always labelled as an estimate (docs/decisions.md 7.2).
  */
-import type { MapBin } from "./types";
+import { kgNum } from "./format";
+import type { BinReports, Correction, MapBin } from "./types";
 
 /** After this long without a weighing or a pickup, the fill may have drifted (unweighed items, a missed pickup) */
 export const STALE_DAYS = 7;
@@ -37,4 +38,21 @@ export function howKnown(bin: MapBin, now: Date): Known {
   const stale = now.getTime() - new Date(latest).getTime() > STALE_DAYS * 86_400_000;
   if (emptied && latest === emptied) return { basis: `Emptied ${ago(emptied, now)}, nothing weighed in since`, stale };
   return { basis: `Weighed ${ago(weighed!, now)}`, stale };
+}
+
+const times = (f: number) => `${f.toLocaleString("en-MY", { maximumFractionDigits: 2 })} times`;
+
+/** The fill, and when collectors' scales have shown that more goes in than is weighed, by how much (Phase 6). */
+export function fillLine(fillKg: number, capacityKg: number, estKg: number, c: Correction | null | undefined): string {
+  if (!c) return `${kgNum(fillKg)} of ${kgNum(capacityKg)}`;
+  return `About ${kgNum(estKg)} of ${kgNum(capacityKg)}: ${kgNum(fillKg)} weighed in, and at the last ${c.pickups} pickups the scale showed ${times(c.factor)} what was weighed in`;
+}
+
+/** What people have reported since the bin was last emptied (Phase 6). */
+export function reportLine(r: BinReports | null | undefined, now: Date): string | null {
+  if (!r) return null;
+  const who = r.count === 1 ? "1 person" : `${r.count} people`;
+  const what = r.overflowing ? "full or overflowing" : "full";
+  const line = `Reported ${what} by ${who}, last ${ago(r.last_at, now)}`;
+  return r.confirmed ? `${line}: marked for pickup` : line;
 }

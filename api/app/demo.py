@@ -52,6 +52,7 @@ REWARDS = [
     ("RM10 grocery voucher", "Show the code at the counter.", 1000, 10),
 ]
 PASSWORD = "demo-password"
+DEMO_MEASURED_PICKUPS = 3
 
 
 COLLECTORS = [("collector1.demo@example.com", "Demo collector 1"), ("collector2.demo@example.com", "Demo collector 2")]
@@ -104,6 +105,7 @@ def seed_demo(db: Session, days: int = 42, seed: int = 7) -> dict:
         user(f"resident{i:02d}.demo@example.com", f"Demo resident {i:02d}", Role.resident) for i in range(1, 41)
     ]
     add_demo_collectors(db)
+    collector_id = db.scalar(select(User.id).where(User.email == COLLECTORS[0][0]))
     rates = {k: v[0] for k, v in SAMPLE_RATES.items()}
 
     # 1. Deposits, 8 am to 8 pm Malaysian time, busier at points A and C and at weekends
@@ -151,8 +153,17 @@ def seed_demo(db: Session, days: int = 42, seed: int = 7) -> dict:
                 ends_at, acc, goal = started, 0, rng.uniform(0.8, 0.95) * cap_g
         if ends_at is not None and acc:
             pickups.append((ends_at, acc))  # the oldest, partial cycle
-        for when, grams in pickups:
-            db.add(Pickup(container_id=c.id, collected_g=grams, by_user_id=admin.id, created_at=when))
+        # The last few pickups were weighed on a collector's scale (Phase 4). The scale shows more than was weighed
+        # in, by a made-up share per bin for things dropped in unweighed, so the forecast's correction has
+        # something to learn from. Older pickups are the admin's one-tap kind.
+        unweighed = rng.uniform(1.05, 1.4)
+        for i, (when, grams) in enumerate(pickups):  # newest first
+            if i < DEMO_MEASURED_PICKUPS:
+                scale_g = round(grams * unweighed * rng.uniform(0.96, 1.04))
+                db.add(Pickup(container_id=c.id, collected_g=scale_g, expected_g=grams, measured=True,
+                              by_user_id=collector_id, created_at=when))  # fmt: skip
+            else:
+                db.add(Pickup(container_id=c.id, collected_g=grams, by_user_id=admin.id, created_at=when))
 
     rewards = [Reward(name=n, description=desc, cost_points=c, stock=s, is_demo=True) for n, desc, c, s in REWARDS]
     db.add_all(rewards)

@@ -137,6 +137,7 @@ function MyJob({ n, job }: { n: number; job: Job }) {
 function BinTask({ job, item }: { job: Job; item: JobItem }) {
   const [weight, setWeight] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
+  const [preparing, setPreparing] = useState(false); // the photo is being made smaller
   const [skipping, setSkipping] = useState(false);
   const [reason, setReason] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
@@ -147,7 +148,7 @@ function BinTask({ job, item }: { job: Job; item: JobItem }) {
     return (
       <li className="bintask is-done">
         <BinBadge bin={item.stream_key} />
-        <p className="small-print">
+        <p className="small-print with-icon">
           {item.state === "collected" ? (
             <>
               <Check size={14} aria-hidden /> Collected {kgNum(item.collected_kg ?? 0)} on the scale
@@ -227,14 +228,19 @@ function BinTask({ job, item }: { job: Job; item: JobItem }) {
               aria-label={`Photo of the emptied ${label}`}
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) void shrinkPhoto(f).then(setPhoto);
+                if (f) {
+                  setPreparing(true);
+                  void shrinkPhoto(f)
+                    .then(setPhoto)
+                    .finally(() => setPreparing(false));
+                }
                 e.target.value = "";
               }}
             />
           </label>
           {photo && <span className="small-print muted">Photo added</span>}
           <div className="bintask__actions">
-            <Button small type="submit" busy={collect.isPending}>
+            <Button small type="submit" busy={collect.isPending || preparing}>
               Collected
             </Button>
             <Button small variant="quiet" onClick={() => setSkipping(true)}>

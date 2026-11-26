@@ -130,8 +130,16 @@ export const api = {
   setRole: (userId: number, body: { role: string; drop_point_id: number | null }) =>
     request<Staff>(`/admin/users/${userId}/role`, json("PUT", body)),
 
-  // The public map (Phase 4)
+  // The public map (Phase 4) and reports from the public (Phase 6)
   dropOffMap: () => request<DropOffMap>("/map"),
+  reportBin: (pointId: number, streamKey: string, level: "full" | "overflowing", photo: File | null) => {
+    const form = new FormData();
+    form.append("point_id", String(pointId));
+    form.append("stream_key", streamKey);
+    form.append("level", level);
+    if (photo) form.append("photo", photo);
+    return request<{ id: number }>("/reports", { method: "POST", body: form });
+  },
 
   // Collectors (Phase 4)
   collectorJobs: () => request<CollectorJobs>("/collector/jobs"),
@@ -146,6 +154,9 @@ export const api = {
   skipBin: (jobId: number, itemId: number, reason: string) =>
     request<Job>(`/collector/jobs/${jobId}/items/${itemId}/skip`, json("POST", { reason })),
 };
+
+/** A report's photo (admins) */
+export const reportPhotoUrl = (reportId: number) => `/api/reports/${reportId}/photo`;
 
 /** The collector's photo of an emptied bin (admins, and the collector who took it) */
 export const pickupPhotoUrl = (pickupId: number) => `/api/pickups/${pickupId}/photo`;

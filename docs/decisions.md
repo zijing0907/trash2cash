@@ -416,3 +416,29 @@ One entry per milestone: what was chosen, the alternatives, and why.
 - **Photos** are kept in the media folder and shown only to admins and to the collector who took them.
 - **Not yet:** paying collectors, and collectors' own location on the admin's map.
 
+## Phase 6a: reports from the public, and a forecast that corrects itself (26 Nov 2026)
+
+### 8.1 "Bin full" reports
+- **Chose:** anyone signed in can report a bin full or overflowing, with an optional photo. One report is a hint
+  on the map ("Reported full by 1 person, 20 minutes ago"). Three different people within 24 hours, since the
+  bin was last emptied, make it due on the board and put its point in today's run, so it can be offered to
+  collectors like any other stop.
+- **Against abuse:** an account is needed; each person can report a bin once every six hours and at most twenty
+  times a day; the map shows how many people reported, never who; photos are for admins only; reports stop
+  counting after 24 hours and when the bin is emptied. One person cannot make a bin due on their own.
+- **Why three:** two could be friends joking; three independent people within a day is unlikely without a real
+  full bin. Not measured yet; it is a constant (`CONFIRM_PEOPLE`) to tune once real reports come in.
+
+### 8.2 The forecast corrects itself with the collectors' scales
+- **Chose:** for each bin, the last five measured pickups (Phase 4) give a factor: what the scale showed divided by
+  what had been weighed in. The fill and the daily inflow are multiplied by it before the forecast runs, so a bin
+  where people drop things in without weighing is forecast to fill sooner.
+- **Only with enough to learn from:** at least two measured pickups with 10 kg weighed in between them, from the
+  last 180 days; otherwise the plain forecast stands. Factors are kept between 0.5 and 3, because anything outside
+  is more likely a typing mistake on the scale than a habit.
+- **Shown, not hidden:** the map and the board say "About 50 kg: 40 kg weighed in, and at the last 2 pickups the
+  scale showed 1.25 times what was weighed in". The weighed-in figure stays visible next to the estimate.
+- **Demo data:** the seed's last three pickups per bin are now generated as measured, with a made-up share of
+  unweighed items per bin (5% to 40%), so the correction can be seen. Most demo bins have fewer than two such
+  pickups in six weeks and keep the plain forecast, which is what would happen in real use too.
+

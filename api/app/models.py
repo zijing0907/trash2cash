@@ -1,6 +1,6 @@
 """Database tables. Milestone 2: users and scans. Milestone 3: drop-off points, deposits weighed by an operator,
 the points ledger and rewards. Milestone 4: pickups, which the admin board forecasts. Phase 4: pickup jobs that
-collectors take."""
+collectors take. Phase 6: reports from the public that a bin is full."""
 
 import enum
 import uuid
@@ -290,3 +290,22 @@ class JobItem(Base):
     job: Mapped[Job] = relationship(back_populates="items")
     container: Mapped[Container] = relationship()
     pickup: Mapped[Pickup | None] = relationship()
+
+
+class ReportLevel(enum.StrEnum):
+    full = "full"
+    overflowing = "overflowing"
+
+
+class BinReport(Base):
+    """Someone signed in says a bin is full or overflowing (Phase 6). Counts only until the bin is next emptied."""
+
+    __tablename__ = "bin_reports"
+    __table_args__ = (Index("ix_bin_reports_container_created", "container_id", "created_at"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    container_id: Mapped[int] = mapped_column(ForeignKey("containers.id", ondelete="CASCADE"))
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    level: Mapped[ReportLevel] = mapped_column(Enum(ReportLevel, name="report_level", native_enum=False, length=20))
+    photo_path: Mapped[str | None] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

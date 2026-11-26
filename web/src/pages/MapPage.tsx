@@ -1,20 +1,24 @@
-import { useQuery } from "@tanstack/react-query";
-import { LocateFixed } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Camera, Check, Flag, LocateFixed } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Link } from "react-router";
 
 import { BinBadge } from "../components/BinBadge";
 import { FillBar } from "../components/FillBar";
 import { MapView, type Pin } from "../components/MapView";
 import { Button, ErrorNote, Spinner } from "../components/ui";
 import { api } from "../lib/api";
-import { howKnown } from "../lib/certainty";
-import { day, kgNum, km } from "../lib/format";
+import { fillLine, howKnown, reportLine } from "../lib/certainty";
+import { day, km } from "../lib/format";
 import { distanceKm, type LatLng } from "../lib/geo";
+import { useMe } from "../lib/hooks";
+import { shrinkPhoto } from "../lib/photo";
 import { useMyPosition } from "../lib/position";
 import type { MapBin, MapPoint } from "../lib/types";
 
 /** What the forecast says, always called an estimate */
 function outlook(b: MapBin): string {
+  if (b.status === "due" && b.due_because === "reports") return "A pickup is due because people reported it full";
   if (b.status === "due") return "Nearly full: a pickup is due";
   if (b.status === "idle") return "No drop-offs in the last two weeks";
   return b.full_on ? `Full around ${day(b.full_on)} (estimate from the last two weeks)` : "Not filling up";
@@ -135,24 +139,118 @@ function Place(props: {
         <ul className="place__bins">
           {p.bins.map((b) => {
             const known = howKnown(b, now);
+            const reported = reportLine(b.reports, now);
+            const fill = fillLine(b.fill_kg, b.capacity_kg, b.est_fill_kg ?? b.fill_kg, b.correction);
             return (
               <li key={b.stream_key}>
                 <BinBadge bin={b.stream_key} />
-                <FillBar
-                  bin={b.stream_key}
-                  ratio={b.fill_ratio}
-                  label={`${b.stream_name}: ${kgNum(b.fill_kg)} of ${kgNum(b.capacity_kg)}`}
-                />
+                <FillBar bin={b.stream_key} ratio={b.fill_ratio} label={`${b.stream_name}: ${fill}`} />
                 <p className="small-print">
-                  {kgNum(b.fill_kg)} of {kgNum(b.capacity_kg)}. {known.basis}
+                  {fill}. {known.basis}
                   {known.stale && ", so it may be out of date"}.
                 </p>
+                {reported && <p className="small-print report-line">{reported}.</p>}
                 <p className="small-print muted">{outlook(b)}</p>
+                <ReportBin pointId={p.id} bin={b} />
               </li>
             );
           })}
         </ul>
       )}
     </li>
+  );
+}
+
+/** "Report it full": signed-in people only, once per bin every few hours (the API says so if it was too soon). */
+function ReportBin({ pointId, bin }: { pointId: number; bin: MapBin }) {
+  const { data: me } = useMe();
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [level, setLevel] = useState<"full" | "overflowing">("full");
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [preparing, setPreparing] = useState(false); // the photo is being made smaller; send it once it is ready
+  const send = useMutation({
+    mutationFn: () => api.reportBin(pointId, bin.stream_key, level, photo),
+    onSuccess: () => {
+      setOpen(false);
+      void qc.invalidateQueries({ queryKey: ["map"] });
+    },
+  });
+
+  if (bin.reports?.mine)
+    return (
+      <p className="small-print with-icon">
+        <Check size={14} aria-hidden /> You reported this bin. Thank you.
+      </p>
+    );
+  if (me === undefined) return null;
+  if (me === null)
+    return (
+      <p className="small-print">
+        <Link to="/login?next=/map" className="link">
+          Log in to report it full
+        </Link>
+      </p>
+    );
+  if (!open)
+    return (
+      <div>
+        <Button small variant="quiet" onClick={() => setOpen(true)}>
+          <Flag size={16} aria-hidden /> Report it full
+        </Button>
+      </div>
+    );
+  return (
+    <form
+      className="report"
+      onSubmit={(e) => {
+        e.preventDefault();
+        send.mutate();
+      }}
+    >
+      <fieldset className="report__level">
+        <legend>How full is the {bin.stream_name.toLowerCase()} bin?</legend>
+        {(["full", "overflowing"] as const).map((l) => (
+          <label key={l} className="check">
+            <input
+              type="radio"
+              name={`level-${pointId}-${bin.stream_key}`}
+              checked={level === l}
+              onChange={() => setLevel(l)}
+            />
+            {l === "full" ? "Full" : "Overflowing"}
+          </label>
+        ))}
+      </fieldset>
+      <label className="btn btn--secondary btn--small filebtn">
+        <Camera size={16} aria-hidden />
+        {photo ? "Change the photo" : "Add a photo (optional)"}
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          aria-label={`Photo of the full ${bin.stream_name.toLowerCase()} bin`}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) {
+              setPreparing(true);
+              void shrinkPhoto(f)
+                .then(setPhoto)
+                .finally(() => setPreparing(false));
+            }
+            e.target.value = "";
+          }}
+        />
+      </label>
+      <div className="report__actions">
+        <Button small type="submit" busy={send.isPending || preparing}>
+          Send report
+        </Button>
+        <Button small variant="quiet" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+      {send.error && <ErrorNote>{send.error.message}</ErrorNote>}
+    </form>
   );
 }
