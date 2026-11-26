@@ -462,3 +462,30 @@ One entry per milestone: what was chosen, the alternatives, and why.
   two pickups open at a time.
 - **Not yet:** paying collectors, and letting a resident and a collector message each other.
 
+## Phase 7: the community page and what people find confusing (26 Nov 2026)
+
+### 9.1 Totals by place, never by person
+- **Chose:** a public page with this month's weighed-in kilograms, drop-offs and residents taking part, the last
+  eight weeks, and the month by drop-off point (home pickups as their own row) and by bin. Only weighed figures:
+  no CO2 or "trees saved", because there is no source for a conversion we could defend.
+- **The weekly chart:** one series, so one colour (ink) and no legend; the heading names it. The high point and
+  the week so far carry their numbers, every week shows its own on hover or keyboard focus, and the same figures
+  are a table underneath. The week so far is hatched, so it is not read as a drop. Ends stay square, as every mark
+  in this design system does.
+
+### 9.2 Confusion, with a privacy floor
+- **Chose:** from the last 90 days of scans by signed-in residents: the items people asked about most (by the
+  answer they confirmed, or the model's sure answer), the pairs where people corrected the model, and how many
+  people scanned something that is none of the 12 kinds. People are counted, not scans, so one person scanning the
+  same thing twenty times counts once.
+- **Privacy floor:** a row shows only once 3 different people are in it; the rest are counted ("2 more items
+  ... are not shown"). Guest scans are left out because they cannot be told apart as people. Nothing names a
+  person, and the place filter covers groups of residents, not single scans.
+- **Places without locations:** scans record no location. "By place" means the residents whose drop-offs were
+  mostly weighed at that point; the page says so. Adding an optional rough location to scans would be more direct,
+  but it is a new thing to ask people for, so it waits until there is a reason.
+- **Demo data:** scans now carry `is_demo` (migration 0008). The seed generates a few hundred scans for the demo
+  residents with plausible mix-ups (paper and cardboard, a greasy box read as cardboard), and the page says the
+  figures are demo data whenever any are.
+- **Not yet:** Bahasa Melayu (set aside for now), and a printable poster from the confusion figures.
+
