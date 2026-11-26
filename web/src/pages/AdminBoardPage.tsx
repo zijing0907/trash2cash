@@ -6,9 +6,11 @@ import { Link } from "react-router";
 import { BinBadge } from "../components/BinBadge";
 import { FillBar } from "../components/FillBar";
 import { RoleGate } from "../components/RoleGate";
-import { Button, ErrorNote, Spinner } from "../components/ui";
+import { Skeleton } from "../components/Skeleton";
+import { Button, ErrorNote } from "../components/ui";
 import { api, ApiError, homeApi, homePhotoUrl, pickupPhotoUrl, reportPhotoUrl } from "../lib/api";
 import { HOME_STATE, SLOTS } from "../lib/home";
+import { useToast } from "../lib/toast";
 import { dateTime, day, kgNum, km, ringgit } from "../lib/format";
 import type { BinStatus, Board, BoardBin, JobStatus } from "../lib/types";
 
@@ -40,7 +42,7 @@ function BoardScreen() {
           Rates, rewards and staff
         </Link>
       </header>
-      {board.isPending && <Spinner label="Working out every bin…" />}
+      {board.isPending && <Skeleton label="Working out every bin…" lines={6} />}
       {board.error && <ErrorNote>{board.error.message}</ErrorNote>}
       {board.data && (
         <>
@@ -63,17 +65,23 @@ function BoardScreen() {
 
 function usePickup() {
   const qc = useQueryClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: (ids: number[]) => api.pickups(ids),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "board"] }),
+    onSuccess: (r) => {
+      toast(`Pickup recorded: ${r.emptied === 1 ? "1 bin" : `${r.emptied} bins`}, ${kgNum(r.collected_kg)}`);
+      void qc.invalidateQueries({ queryKey: ["admin", "board"] });
+    },
   });
 }
 
 function useOffer() {
   const qc = useQueryClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: (pointIds: number[]) => api.offerJobs(pointIds),
-    onSuccess: () => {
+    onSuccess: (jobs) => {
+      toast(`Offered to collectors: ${jobs.map((j) => j.point.name).join(", ")}`);
       void qc.invalidateQueries({ queryKey: ["admin", "board"] });
       void qc.invalidateQueries({ queryKey: ["admin", "jobs"] });
     },
@@ -167,9 +175,11 @@ function Run({ board }: { board: Board }) {
 function JobsTable() {
   const qc = useQueryClient();
   const jobs = useQuery({ queryKey: ["admin", "jobs"], queryFn: api.adminJobs, refetchInterval: 60_000 });
+  const toast = useToast();
   const cancel = useMutation({
     mutationFn: (id: number) => api.cancelJob(id),
-    onSuccess: () => {
+    onSuccess: (j) => {
+      toast(`Withdrawn: ${j.point.name}`);
       void qc.invalidateQueries({ queryKey: ["admin", "jobs"] });
       void qc.invalidateQueries({ queryKey: ["admin", "board"] });
     },
@@ -177,7 +187,7 @@ function JobsTable() {
   return (
     <section className="account__section" aria-labelledby="jobs-head">
       <h2 id="jobs-head">Collector jobs</h2>
-      {jobs.isPending && <Spinner label="Loading jobs…" />}
+      {jobs.isPending && <Skeleton label="Loading jobs…" lines={3} />}
       {jobs.error && <ErrorNote>{jobs.error.message}</ErrorNote>}
       {cancel.error && <ErrorNote>{cancel.error.message}</ErrorNote>}
       {jobs.data && jobs.data.length === 0 && (
@@ -255,7 +265,7 @@ function HomePickups() {
   return (
     <section className="account__section" aria-labelledby="home-head">
       <h2 id="home-head">Home pickups</h2>
-      {list.isPending && <Spinner label="Loading home pickups…" />}
+      {list.isPending && <Skeleton label="Loading home pickups…" lines={3} />}
       {list.error && <ErrorNote>{list.error.message}</ErrorNote>}
       {list.data && list.data.length === 0 && (
         <p className="empty">No home pickups in the last two weeks. Residents book them from the map or their account.</p>

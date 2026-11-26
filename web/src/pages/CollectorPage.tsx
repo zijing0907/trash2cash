@@ -6,12 +6,14 @@ import { BinBadge } from "../components/BinBadge";
 import { MapView } from "../components/MapView";
 import { RoleGate } from "../components/RoleGate";
 import { CollectorHome } from "./CollectorHome";
-import { Button, ErrorNote, Spinner } from "../components/ui";
+import { Skeleton } from "../components/Skeleton";
+import { Button, ErrorNote } from "../components/ui";
 import { api } from "../lib/api";
 import { dateTime, kgNum, km } from "../lib/format";
 import { distanceKm, type LatLng, nearestFirst } from "../lib/geo";
 import { shrinkPhoto } from "../lib/photo";
 import { useMyPosition } from "../lib/position";
+import { useToast } from "../lib/toast";
 import type { Job, JobItem } from "../lib/types";
 
 export function CollectorPage() {
@@ -25,9 +27,17 @@ export function CollectorPage() {
 const at = (j: Job): LatLng => [j.point.lat, j.point.lng];
 const expectedKg = (j: Job) => j.items.reduce((sum, it) => sum + it.expected_kg, 0);
 
-function useJobAction<T>(fn: (v: T) => Promise<Job>) {
+/** A job action that refreshes the lists, and says in a short note what happened when it worked */
+function useJobAction<T>(fn: (v: T) => Promise<Job>, done?: (job: Job, v: T) => string) {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: fn, onSettled: () => qc.invalidateQueries({ queryKey: ["collector", "jobs"] }) });
+  const toast = useToast();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: (job, v) => {
+      if (done) toast(done(job, v));
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["collector", "jobs"] }),
+  });
 }
 
 function Jobs() {
@@ -45,7 +55,7 @@ function Jobs() {
         </Button>
       </header>
       {position.problem && <ErrorNote>{position.problem}</ErrorNote>}
-      {jobs.isPending && <Spinner label="Loading jobs…" />}
+      {jobs.isPending && <Skeleton label="Loading jobs…" />}
       {jobs.error && <ErrorNote>{jobs.error.message}</ErrorNote>}
       {jobs.data && (
         <>
@@ -100,10 +110,13 @@ function Mine({ jobs, me }: { jobs: Job[]; me: LatLng | null }) {
 }
 
 function MyJob({ n, job }: { n: number; job: Job }) {
-  const release = useJobAction(() => api.releaseJob(job.id));
+  const release = useJobAction(
+    () => api.releaseJob(job.id),
+    (j) => `${j.point.name} is open for other collectors again`,
+  );
   const started = job.items.some((it) => it.state !== "to_do");
   return (
-    <li className="job">
+    <li className="job" style={{ "--i": n - 1 } as React.CSSProperties}>
       <div className="job__head">
         <span className="figure-num run__n">{n}</span>
         <div>
@@ -143,8 +156,14 @@ function BinTask({ job, item }: { job: Job; item: JobItem }) {
   const [skipping, setSkipping] = useState(false);
   const [reason, setReason] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
-  const collect = useJobAction((v: { kg: number; photo: File }) => api.collectBin(job.id, item.id, v.kg, v.photo));
-  const skip = useJobAction((why: string) => api.skipBin(job.id, item.id, why));
+  const collect = useJobAction(
+    (v: { kg: number; photo: File }) => api.collectBin(job.id, item.id, v.kg, v.photo),
+    (j, v) => `${item.stream_name} bin collected: ${v.kg} kg${j.status === "done" ? `. ${j.point.name} is done` : ""}`,
+  );
+  const skip = useJobAction(
+    (why: string) => api.skipBin(job.id, item.id, why),
+    (j) => `${item.stream_name} bin skipped${j.status === "done" ? `. ${j.point.name} is done` : ""}`,
+  );
 
   if (item.state !== "to_do") {
     return (
@@ -262,7 +281,10 @@ function BinTask({ job, item }: { job: Job; item: JobItem }) {
 }
 
 function Open({ jobs, me }: { jobs: Job[]; me: LatLng | null }) {
-  const take = useJobAction((id: number) => api.takeJob(id));
+  const take = useJobAction(
+    (id: number) => api.takeJob(id),
+    (j) => `${j.point.name} is yours. It is on your map above`,
+  );
   const rows = jobs
     .map((j) => ({ job: j, km: me ? distanceKm(me, at(j)) : null }))
     .sort((a, b) => (a.km !== null && b.km !== null ? a.km - b.km : 0));

@@ -3,7 +3,8 @@ import { Heart } from "lucide-react";
 import { Link } from "react-router";
 
 import { BinBadge } from "../components/BinBadge";
-import { Button, ErrorNote, Spinner } from "../components/ui";
+import { Skeleton } from "../components/Skeleton";
+import { Button, ErrorNote } from "../components/ui";
 import { api } from "../lib/api";
 import { useModelInfo } from "../lib/hooks";
 import { percent } from "../lib/image";
@@ -64,7 +65,7 @@ function ScanList() {
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.next_before,
   });
-  if (scans.isPending) return <Spinner label="Loading your scans…" />;
+  if (scans.isPending) return <Skeleton label="Loading your scans…" />;
   if (scans.error) return <ErrorNote>{scans.error.message}</ErrorNote>;
   const items = scans.data.pages.flatMap((p) => p.items);
   if (items.length === 0) {

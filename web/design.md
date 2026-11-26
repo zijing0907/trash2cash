@@ -34,13 +34,19 @@ guide's rule over a bin). Paper-coloured text on each clears 4.5:1. Never use th
 - Links: hairline underline that turns green on hover; the active nav link is underlined in green
 
 ## Motion
-- Character: still. State changes only (a colour step, a 1px press); no reveal, nothing on scroll; under
-  reduced motion everything ends at once.
-- Two moments on the scan screen, added in Phase 2, and nowhere else: while the model works, one line passes
-  over what it is reading (the square, or the whole photo with zoom search), 1.5s, `--ease-in-out`; when the
-  answer arrives, its block settles in from 14px above and the bin's name follows 90ms later (`--dur-long`,
-  `--ease-out`). Under reduced motion there is no line (the square only turns green) and the answer appears
-  at once.
+- Character: considered (changed from "still" in Phase 8a). Motion explains a change, and nothing moves for
+  decoration:
+  - where something came from: pages glide, the scan photo moves from the preview into the result, the green
+    mark slides to the new link, the map flies to a chosen place;
+  - what changed: numbers count up (and what was added since the last visit floats up), bars grow from their
+    baseline, the bin's name stamps down on the answer, pins drop, a collector's route draws itself;
+  - that an action worked: ticks draw themselves, short notes slide up at the bottom ("Booked", "Collected").
+- Only transform and opacity move. 120 to 760 ms. `--ease-out` for arrivals, `--ease-land` (a small overshoot
+  that settles) for things that land. Lists and bars arrive a beat apart (45 to 80 ms), at most 12 steps.
+- The only loops are states: the scanning line while the model works and the loading shimmer.
+- Under reduced motion everything ends at once (base.css) and view transitions are off; every end state is the
+  same, so nothing is lost. All of it lives in `src/motion.css` and `src/lib/motion.ts`.
+- Not used: scroll-linked motion, parallax, motion on page load that is not new information.
 
 ## Exports
 `src/tokens.css` (Tailwind 4 `@theme static` block plus `:root`) in this project. Tailwind, DTCG or shadcn

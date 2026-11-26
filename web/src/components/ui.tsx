@@ -39,7 +39,7 @@ export function Button({
 }
 
 export function ButtonLink({ variant = "primary", small, className, ...rest }: Common & LinkProps) {
-  return <Link className={classes(variant, small, className)} {...rest} />;
+  return <Link className={classes(variant, small, className)} viewTransition {...rest} />;
 }
 
 export function Spinner({ label }: { label: string }) {

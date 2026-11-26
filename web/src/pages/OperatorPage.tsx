@@ -3,7 +3,10 @@ import { Camera, Check, Search } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { BinBadge } from "../components/BinBadge";
+import { CountUp } from "../components/CountUp";
+import { DrawnCheck } from "../components/DrawnCheck";
 import { RoleGate } from "../components/RoleGate";
+import { Skeleton } from "../components/Skeleton";
 import { Button, ErrorNote, Spinner } from "../components/ui";
 import { api } from "../lib/api";
 import { dateTime, kg, pts, time } from "../lib/format";
@@ -116,7 +119,8 @@ function Counter(props: {
     return (
       <section className="slip" aria-live="polite">
         <p className="slip__done">
-          <Check size={20} aria-hidden /> Credited {pts(receipt.points)} to {receipt.resident_name}
+          <DrawnCheck size={22} /> Credited <CountUp to={receipt.points} duration={700} format={pts} /> to{" "}
+          {receipt.resident_name}
         </p>
         <ul className="slip__lines">
           {receipt.lines.map((ln) => (
@@ -127,7 +131,12 @@ function Counter(props: {
             </li>
           ))}
         </ul>
-        {receipt.balance_after !== null && <p>New balance: {pts(receipt.balance_after)}</p>}
+        {receipt.balance_after !== null && (
+          <p>
+            New balance:{" "}
+            <CountUp from={receipt.balance_after - receipt.points} to={receipt.balance_after} format={pts} />
+          </p>
+        )}
         <Button onClick={next}>Next member</Button>
       </section>
     );
@@ -318,7 +327,7 @@ function Today({ pointId, isAdmin }: { pointId: number; isAdmin: boolean }) {
       <h2 id="today-head" className="side-head">
         Today here
       </h2>
-      {q.isPending && <Spinner label="Loading today’s deposits…" />}
+      {q.isPending && <Skeleton label="Loading today’s deposits…" lines={3} />}
       {q.error && <ErrorNote>{q.error.message}</ErrorNote>}
       {q.data && q.data.length === 0 && <p className="empty">No deposits yet today.</p>}
       {q.data && q.data.length > 0 && (

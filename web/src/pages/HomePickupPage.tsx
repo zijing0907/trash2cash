@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { BinBadge } from "../components/BinBadge";
 import { MapView } from "../components/MapView";
+import { Skeleton } from "../components/Skeleton";
 import { Button, ButtonLink, ErrorNote, Spinner } from "../components/ui";
 import { api, homeApi } from "../lib/api";
 import { day as showDay, dateTime, kg, pts } from "../lib/format";
@@ -11,6 +12,7 @@ import type { LatLng } from "../lib/geo";
 import { useMe } from "../lib/hooks";
 import { shrinkPhoto } from "../lib/photo";
 import { useMyPosition } from "../lib/position";
+import { useToast } from "../lib/toast";
 import { HOME_STATE, SLOTS } from "../lib/home";
 import type { HomePickup, Slot } from "../lib/types";
 
@@ -69,9 +71,11 @@ function BookingForm() {
   // A click on the map wins; "Use my location" clears it, so the pin goes where the person is
   const pin = at ?? position.at;
 
+  const toast = useToast();
   const book = useMutation({
     mutationFn: homeApi.book,
-    onSuccess: () => {
+    onSuccess: (p) => {
+      toast(`Booked for ${showDay(p.day)}. You will see here when a collector takes it`);
       setChosen([]);
       setRoughKg("");
       setNote("");
@@ -203,11 +207,6 @@ function BookingForm() {
           </p>
         )}
         {book.error && <ErrorNote>{book.error.message}</ErrorNote>}
-        {book.isSuccess && (
-          <p className="thanks" role="status">
-            Booked. You will see below when a collector takes it.
-          </p>
-        )}
         <div className="actions">
           <Button type="submit" busy={book.isPending || preparing}>
             Book the pickup
@@ -221,14 +220,16 @@ function BookingForm() {
 function MyPickups() {
   const qc = useQueryClient();
   const list = useQuery({ queryKey: ["home", "mine"], queryFn: homeApi.mine, refetchInterval: 60_000 });
+  const toast = useToast();
   const cancel = useMutation({
     mutationFn: homeApi.cancel,
+    onSuccess: () => toast("Pickup cancelled"),
     onSettled: () => qc.invalidateQueries({ queryKey: ["home", "mine"] }),
   });
   return (
     <section className="account__section" aria-labelledby="mine-head">
       <h2 id="mine-head">Your pickups</h2>
-      {list.isPending && <Spinner label="Loading your pickups…" />}
+      {list.isPending && <Skeleton label="Loading your pickups…" lines={3} />}
       {list.error && <ErrorNote>{list.error.message}</ErrorNote>}
       {cancel.error && <ErrorNote>{cancel.error.message}</ErrorNote>}
       {list.data && list.data.length === 0 && <p className="empty">You have not booked a pickup yet.</p>}

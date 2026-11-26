@@ -3,6 +3,7 @@ import { NavLink, Outlet, ScrollRestoration, useNavigate } from "react-router";
 
 import { useLogout, useMe } from "../lib/hooks";
 import { Logo } from "./Logo";
+import { ToastProvider } from "./Toast";
 import { ButtonLink } from "./ui";
 
 import type { Role } from "../lib/types";
@@ -78,7 +79,7 @@ export function Shell() {
   const { data: me } = useMe();
   const role = me?.role;
   return (
-    <>
+    <ToastProvider>
       <a className="skip" href="#main">
         Skip to content
       </a>
@@ -87,8 +88,13 @@ export function Shell() {
           <Logo />
           <nav className="masthead__nav" aria-label="Main">
             {navFor(role).map((n) => (
-              <NavLink key={n.to} to={n.to} className="navlink">
-                {n.label}
+              <NavLink key={n.to} to={n.to} className="navlink" viewTransition>
+                {({ isActive }) => (
+                  <>
+                    {n.label}
+                    {isActive && <span className="navmark" aria-hidden />}
+                  </>
+                )}
               </NavLink>
             ))}
           </nav>
@@ -123,15 +129,26 @@ export function Shell() {
           {tabsFor(role).map((n) => {
             const Icon = n.icon;
             return (
-              <NavLink key={n.to} to={n.to} end={n.to === "/"} className={n.to === "/scan" ? "tab tab--scan" : "tab"}>
-                <Icon size={20} aria-hidden />
-                {n.short}
+              <NavLink
+                key={n.to}
+                to={n.to}
+                end={n.to === "/"}
+                className={n.to === "/scan" ? "tab tab--scan" : "tab"}
+                viewTransition
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive && n.to !== "/scan" && <span className="tabmark" aria-hidden />}
+                    <Icon size={20} aria-hidden />
+                    {n.short}
+                  </>
+                )}
               </NavLink>
             );
           })}
         </div>
       </nav>
       <ScrollRestoration />
-    </>
+    </ToastProvider>
   );
 }

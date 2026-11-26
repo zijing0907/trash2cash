@@ -4,6 +4,7 @@ import L from "leaflet";
 import { useEffect, useRef, useState } from "react";
 
 import type { LatLng } from "../lib/geo";
+import { motionAllowed } from "../lib/motion";
 
 export interface Pin {
   id: number;
@@ -35,10 +36,10 @@ interface Props {
 // The campus the demo points sit around; any real map fits itself to its pins
 const DEFAULT_CENTER: LatLng = [4.3375, 101.1436];
 
-function pinIcon(html: string, cls: string, size = 30) {
+function pinIcon(html: string, cls: string, size = 30, style = "") {
   return L.divIcon({
     className: "",
-    html: `<span class="${cls}">${html}</span>`,
+    html: `<span class="${cls}"${style ? ` style="${style}"` : ""}>${html}</span>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
@@ -55,6 +56,9 @@ export function MapView({ pins, label, selected, onSelect, route, me, onPick, pi
   const map = useRef<L.Map | null>(null);
   const layer = useRef<L.LayerGroup | null>(null);
   const fitted = useRef("");
+  const dropped = useRef(false); // pins drop in once, not on every redraw
+  const drawnRoute = useRef("");
+  const lastSelected = useRef<number | null | undefined>(selected);
   const [tilesFailed, setTilesFailed] = useState(false);
   const select = useRef(onSelect);
   const pick = useRef(onPick);
@@ -74,6 +78,10 @@ export function MapView({ pins, label, selected, onSelect, route, me, onPick, pi
     m.on("click", (e: L.LeafletMouseEvent) => pick.current?.([e.latlng.lat, e.latlng.lng]));
     layer.current = L.layerGroup().addTo(m);
     map.current = m;
+    // A fresh map (also React's second mount in development) starts with nothing dropped, drawn or fitted yet
+    dropped.current = false;
+    drawnRoute.current = "";
+    fitted.current = "";
     return () => {
       m.remove();
       map.current = null;
@@ -85,13 +93,32 @@ export function MapView({ pins, label, selected, onSelect, route, me, onPick, pi
     const g = layer.current;
     if (!m || !g) return;
     g.clearLayers();
-    if (route && route.length > 1) L.polyline(route, { className: "map-route", interactive: false }).addTo(g);
-    for (const p of pins) {
-      const cls = `pin pin--${p.tone ?? "later"}${p.id === selected ? " is-selected" : ""}`;
-      L.marker(p.at, { icon: pinIcon(escape(p.label), cls), title: p.title, alt: p.title, keyboard: true })
+    const moving = motionAllowed();
+    if (route && route.length > 1) {
+      const line = L.polyline(route, { className: "map-route", interactive: false }).addTo(g);
+      // A new route draws itself from the first stop to the last, then settles into its dashes
+      const routeKey = route.map((p) => p.join(",")).join(";");
+      const path = line.getElement() as SVGPathElement | undefined;
+      if (moving && path && routeKey !== drawnRoute.current && typeof path.getTotalLength === "function") {
+        path.style.setProperty("--len", String(Math.ceil(path.getTotalLength())));
+        path.classList.add("map-route--draw");
+        path.addEventListener("animationend", () => path.classList.remove("map-route--draw"), { once: true });
+      }
+      drawnRoute.current = routeKey;
+    }
+    const enter = moving && !dropped.current && pins.length > 0;
+    pins.forEach((p, i) => {
+      const cls = `pin pin--${p.tone ?? "later"}${p.id === selected ? " is-selected" : ""}${enter ? " pin--enter" : ""}`;
+      L.marker(p.at, {
+        icon: pinIcon(escape(p.label), cls, 30, enter ? `--i:${i}` : ""),
+        title: p.title,
+        alt: p.title,
+        keyboard: true,
+      })
         .on("click", () => select.current?.(p.id))
         .addTo(g);
-    }
+    });
+    if (pins.length > 0) dropped.current = true;
     // Under the places' pins, so standing at a drop-off point never hides its number
     if (me)
       L.marker(me, {
@@ -111,6 +138,17 @@ export function MapView({ pins, label, selected, onSelect, route, me, onPick, pi
       if (places.length === 1) {
         if (!m.getBounds().contains(places[0]!)) m.setView(places[0]!, Math.max(m.getZoom(), 15));
       } else m.fitBounds(L.latLngBounds(places), { padding: [36, 36], maxZoom: 16 });
+    }
+
+    // A place chosen in the list: the map flies to it (or jumps there, under reduced motion)
+    if (selected !== lastSelected.current) {
+      lastSelected.current = selected;
+      const target = pins.find((p) => p.id === selected);
+      if (target) {
+        const zoom = Math.max(m.getZoom(), 16);
+        if (moving) m.flyTo(target.at, zoom, { duration: 0.6 });
+        else m.setView(target.at, zoom);
+      }
     }
   }, [pins, selected, route, me, picked]);
 

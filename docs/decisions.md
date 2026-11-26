@@ -489,3 +489,21 @@ One entry per milestone: what was chosen, the alternatives, and why.
   figures are demo data whenever any are.
 - **Not yet:** Bahasa Melayu (set aside for now), and a printable poster from the confusion figures.
 
+## Phase 8a: motion that explains (26 Nov 2026)
+
+### 10.1 From "still" to "considered"
+- **Chose:** the design rules said "still: state changes only". Phase 8a keeps the printed look but lets motion
+  explain changes (`web/design.md`, Motion): pages glide and the green mark slides to the new link; the scan photo
+  moves from the preview into the result; the bin's name stamps down, confidence fills, the tips follow; points
+  count up from what this browser saw last, with what was earned since floating up; bars grow from their baseline
+  a beat apart; map pins drop, a chosen place is flown to, a collector's route draws itself; ticks draw and short
+  notes ("Booked", "Collected", "Report sent") slide up at the bottom; loading shows the shape of what is coming.
+- **How:** CSS for almost everything (`src/motion.css`), the View Transitions API for page changes and the photo,
+  and a small JavaScript count. Only transform and opacity move.
+- **Reduced motion:** every animation ends at once, view transitions are off, counts show the final number, pins
+  do not drop and the map jumps instead of flying. Every end state is the same, so nothing is lost. Tests run
+  without motion for the same reason.
+- **Found on the way:** a count could show a wrong number for one frame, because a browser can stamp the first
+  frame slightly before the time read in code; the count now times itself from the first frame and stays between
+  the old and the new number.
+
