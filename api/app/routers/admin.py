@@ -90,6 +90,24 @@ def cancel_job(job_id: int, user: User = Depends(admin), db: Session = Depends(g
     return jobs.job_out(jobs.load_job(db, job_id))
 
 
+@router.post("/jobs/{job_id}/reopen")
+def reopen_job(job_id: int, user: User = Depends(admin), db: Session = Depends(get_db)):
+    """Undo a withdrawal within a few minutes: the job is offered again, to every collector."""
+    job = jobs.load_job(db, job_id)
+    finished = (
+        job.finished_at if job.finished_at is None or job.finished_at.tzinfo else job.finished_at.replace(tzinfo=UTC)
+    )
+    too_late = finished is None or datetime.now(UTC) - finished > timedelta(minutes=jobs.UNDO_MINUTES)
+    if job.status != JobStatus.cancelled or too_late:
+        raise api_error(409, "cannot_reopen", "This job can no longer be brought back. Offer the point again instead.")
+    busy = db.scalar(select(Job.id).where(Job.point_id == job.point_id, Job.status.in_(jobs.ACTIVE)))
+    if busy is not None:
+        raise api_error(409, "job_exists", "There is already an open job for this point.")
+    job.status, job.finished_at, job.collector_id, job.taken_at = JobStatus.open, None, None, None
+    db.commit()
+    return jobs.job_out(jobs.load_job(db, job_id))
+
+
 @router.put("/streams/{key}", response_model=StreamOut)
 def update_stream(key: str, body: StreamIn, user: User = Depends(admin), db: Session = Depends(get_db)):
     stream = db.get(Stream, key)

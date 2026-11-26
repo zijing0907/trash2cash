@@ -65,6 +65,14 @@ def cancel(request_id: int, user: User = Depends(current_user), db: Session = De
     return home.out(home.load(db, request_id), full=True)
 
 
+@router.post("/home-pickups/{request_id}/restore")
+def restore(request_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Undo a cancellation within a few minutes."""
+    home.restore(db, home.load(db, request_id), user)
+    db.commit()
+    return home.out(home.load(db, request_id), full=True)
+
+
 @router.get("/home-pickups/{request_id}/photo", response_class=FileResponse)
 def photo(request: Request, request_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
     """The resident's photo of the items: for the resident, admins, and the collector who took the pickup."""

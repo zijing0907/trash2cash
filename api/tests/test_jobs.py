@@ -195,3 +195,21 @@ def test_demo_seed_adds_collectors_even_to_an_older_demo(client):
         db.commit()
         again = seed_demo(db)
         assert again["skipped"] and len(again["added collectors"]) == 2 and len(collectors()) == 2
+
+
+def test_a_withdrawn_job_can_be_reopened_shortly_after(client, crew):
+    from datetime import UTC, datetime, timedelta
+
+    from app.models import Job
+
+    job = offer(client, crew["point_id"]).json()[0]
+    client.post(f"/api/admin/jobs/{job['id']}/cancel")
+    back = client.post(f"/api/admin/jobs/{job['id']}/reopen")
+    assert back.status_code == 200 and back.json()["status"] == "open" and back.json()["collector"] is None
+    assert client.post(f"/api/admin/jobs/{job['id']}/reopen").status_code == 409  # it is open, not withdrawn
+
+    client.post(f"/api/admin/jobs/{job['id']}/cancel")
+    with client.app.state.sessionmaker() as db:
+        db.get(Job, job["id"]).finished_at = datetime.now(UTC) - timedelta(minutes=11)
+        db.commit()
+    assert client.post(f"/api/admin/jobs/{job['id']}/reopen").json()["detail"]["code"] == "cannot_reopen"
