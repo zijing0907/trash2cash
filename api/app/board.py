@@ -7,10 +7,11 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from .forecast import WINDOW_DAYS, forecast, route
+from .forecast import WINDOW_DAYS, correction, forecast, route
 from .jobs import active_job_by_point
-from .models import Container, Deposit, DepositLine, DropPoint, LedgerEntry, LedgerReason, Stream
+from .models import Container, Deposit, DepositLine, DropPoint, LedgerEntry, LedgerReason, Pickup, Stream
 from .points import container_fill_g
+from .reports import active_reports
 
 STATUS_ORDER = {"due": 0, "soon": 1, "later": 2, "idle": 3}
 
@@ -20,9 +21,15 @@ def local_day_start(day: date, tz: ZoneInfo) -> datetime:
     return datetime.combine(day, time.min, tzinfo=tz).astimezone(UTC)
 
 
-def point_statuses(db: Session, tz: ZoneInfo, now: datetime) -> list[dict]:
+LEARN_FROM_DAYS = 180  # measured pickups older than this no longer teach the correction
+
+
+def point_statuses(db: Session, tz: ZoneInfo, now: datetime, viewer_id: int | None = None) -> list[dict]:
     """Every open drop-off point with each bin's fill, inflow, forecast and when it was last weighed into or
-    emptied, most urgent first. Shared by the admin board, the public map and the job offer."""
+    emptied, most urgent first. Shared by the admin board, the public map and the job offer.
+
+    Phase 6: the weighed-in fill and inflow are scaled by what collectors' scales showed at that bin, when there are
+    enough measured pickups to tell (forecast.correction), and reports from enough people make a bin due."""
     today = now.astimezone(tz).date()
     points = db.scalars(
         select(DropPoint)
@@ -52,24 +59,56 @@ def point_statuses(db: Session, tz: ZoneInfo, now: datetime) -> list[dict]:
         )
     )
 
+    # What the truck's scale said against what was weighed in, newest first, for each bin
+    measured: dict[int, list[tuple[float, float]]] = defaultdict(list)
+    for cid, got_g, weighed_g in db.execute(
+        select(Pickup.container_id, Pickup.collected_g, Pickup.expected_g)
+        .where(Pickup.measured, Pickup.expected_g.is_not(None), Pickup.created_at >= now - timedelta(LEARN_FROM_DAYS))
+        .order_by(Pickup.created_at.desc())
+    ):
+        measured[cid].append((got_g / 1000, weighed_g / 1000))
+    containers = [c for p in points for c in p.containers]
+    reports = active_reports(db, containers, now, viewer_id)
+
     out_points = []
     for p in points:
         bins = []
         for c in p.containers:
             fill_kg = container_fill_g(db, c) / 1000
-            fc = forecast(fill_kg, c.capacity_kg, list(daily[(p.id, c.stream_key)].values()), today)
+            corr = correction(measured.get(c.id, []))
+            factor = corr.factor if corr else 1.0
+            est_kg = fill_kg * factor
+            inflow = [kg * factor for kg in daily[(p.id, c.stream_key)].values()]
+            fc = forecast(est_kg, c.capacity_kg, inflow, today)
+            rep = reports.get(c.id)
+            status, pickup_on, due_because = fc.status, fc.pickup_on, "forecast" if fc.status == "due" else None
+            if rep and rep["confirmed"] and status != "due":
+                status, pickup_on, due_because = "due", today, "reports"
             bins.append(
                 {
                     "container_id": c.id,
                     "stream_key": c.stream_key,
                     "stream_name": c.stream.name,
                     "capacity_kg": c.capacity_kg,
-                    "fill_kg": round(fill_kg, 1),
-                    "fill_ratio": round(min(fill_kg / c.capacity_kg, 9.99), 3) if c.capacity_kg else 1.0,
+                    "fill_kg": round(fill_kg, 1),  # weighed in since the bin was emptied
+                    "est_fill_kg": round(est_kg, 1),  # the same, scaled by the correction (equal without one)
+                    "fill_ratio": round(min(est_kg / c.capacity_kg, 9.99), 3) if c.capacity_kg else 1.0,
+                    "correction": (
+                        {
+                            "factor": corr.factor,
+                            "pickups": corr.pickups,
+                            "measured_kg": round(corr.measured_kg, 1),
+                            "weighed_kg": round(corr.weighed_kg, 1),
+                        }
+                        if corr
+                        else None
+                    ),  # fmt: skip
                     "rate_kg_per_day": round(fc.rate_kg_per_day, 1),
                     "full_on": fc.full_on,
-                    "pickup_on": fc.pickup_on,
-                    "status": fc.status,
+                    "pickup_on": pickup_on,
+                    "status": status,
+                    "due_because": due_because,
+                    "reports": rep,
                     "last_pickup_at": c.emptied_at,
                     "last_deposit_at": last_in.get((p.id, c.stream_key)),
                 }

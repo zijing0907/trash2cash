@@ -40,11 +40,13 @@ serve the web app and proxy `/api` here (no CORS needed).
 | `GET /api/operator/vouchers/{code}`, `POST /api/operator/vouchers/{code}/collect` | operator, admin | Check a voucher; hand the reward over (a conditional update, so a code is collected once) |
 | `GET /api/admin/board`, `POST /api/admin/pickups` | admin | Fill, forecast and today's run for every bin; record emptied bins |
 | `GET/POST/PUT /api/admin/points` | admin | Drop-off points: name, address, map position, bins and sizes, open or closed |
-| `GET /api/map` | anyone | Open drop-off points, each bin's fill (weighed drop-offs since it was emptied), when it was last weighed into or emptied, and the forecast |
+| `GET /api/map` | anyone | Open drop-off points, each bin's fill (weighed drop-offs since it was emptied) and corrected fill, when it was last weighed into or emptied, reports that still count (how many people, not who), and the forecast |
 | `POST /api/admin/jobs`, `GET /api/admin/jobs`, `POST /api/admin/jobs/{id}/cancel` | admin | Offer points to collectors (one open job per point), follow jobs, withdraw one |
 | `GET /api/collector/jobs`, `POST /api/collector/jobs/{id}/take`, `POST .../release` | collector | Open jobs, mine and done this week; take one (a conditional update: only one collector gets it); hand it back before starting |
 | `POST /api/collector/jobs/{id}/items/{item}/collect`, `POST .../skip` | collector | Form: `weight_kg` and `photo` (the empty bin): records a measured pickup next to what was weighed in. Or skip with a reason |
 | `GET /api/pickups/{id}/photo` | admin, the collector who took it | The photo of the emptied bin |
+| `POST /api/reports` | logged in | Form: `point_id`, `stream_key`, `level` (`full` or `overflowing`), optional `photo`. Once per person per bin every 6 hours, at most 20 a day |
+| `GET /api/reports/{id}/photo` | admin | A report's photo |
 | `PUT /api/admin/streams/{key}`, `GET/POST/PUT /api/admin/rewards`, `GET /api/admin/staff`, `PUT /api/admin/users/{id}/role` | admin | Rates and prices, rewards, roles |
 
 Interactive docs: http://localhost:8000/api/docs.

@@ -2,7 +2,8 @@
 
 The forecast is deliberately simple and explainable: the average weight that came in per day over the last
 two weeks, extended in a straight line. A bin is due for pickup when it is forecast to pass 90% of capacity,
-so the truck arrives before it overflows rather than when it is half empty.
+so the truck arrives before it overflows rather than when it is half empty. From Phase 6 the weighed-in numbers
+are scaled by what collectors' scales showed at that bin (correction below).
 """
 
 import math
@@ -40,6 +41,34 @@ def forecast(fill_kg: float, capacity_kg: float, daily_kg: list[float], today: d
     else:
         status = "later"
     return Forecast(rate, days_to_full, today + timedelta(days=math.floor(days_to_full)), pickup_on, status)
+
+
+# Self-correction (Phase 6). Some people drop things in without having them weighed, so a bin holds more than its
+# weighed-in total. Collectors' scale weights (Phase 4) show by how much, bin by bin.
+CORRECTION_PICKUPS = 5  # learn from a bin's last five measured pickups
+CORRECTION_MIN_PICKUPS = 2  # with fewer, the plain forecast stands
+CORRECTION_MIN_KG = 10.0  # and at least this much weighed in across them, so one tiny pickup cannot swing it
+CORRECTION_RANGE = (0.5, 3.0)  # a factor outside this is more likely a typo on the scale than a habit
+
+
+@dataclass(frozen=True)
+class Correction:
+    factor: float  # what the scale says per kg weighed in
+    pickups: int
+    measured_kg: float
+    weighed_kg: float
+
+
+def correction(pickups: list[tuple[float, float]]) -> Correction | None:
+    """pickups: (kg on the truck's scale, kg weighed in since the bin was emptied before) of a bin's measured
+    pickups, newest first. None when there is too little to learn from."""
+    recent = pickups[:CORRECTION_PICKUPS]
+    measured = sum(m for m, _ in recent)
+    weighed = sum(w for _, w in recent)
+    if len(recent) < CORRECTION_MIN_PICKUPS or weighed < CORRECTION_MIN_KG:
+        return None
+    low, high = CORRECTION_RANGE
+    return Correction(round(min(max(measured / weighed, low), high), 2), len(recent), measured, weighed)
 
 
 def distance_km(a: tuple[float, float], b: tuple[float, float]) -> float:
