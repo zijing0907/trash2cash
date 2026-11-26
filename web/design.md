@@ -36,6 +36,11 @@ guide's rule over a bin). Paper-coloured text on each clears 4.5:1. Never use th
 ## Motion
 - Character: still. State changes only (a colour step, a 1px press); no reveal, nothing on scroll; under
   reduced motion everything ends at once.
+- Two moments on the scan screen, added in Phase 2, and nowhere else: while the model works, one line passes
+  over what it is reading (the square, or the whole photo with zoom search), 1.5s, `--ease-in-out`; when the
+  answer arrives, its block settles in from 14px above and the bin's name follows 90ms later (`--dur-long`,
+  `--ease-out`). Under reduced motion there is no line (the square only turns green) and the answer appears
+  at once.
 
 ## Exports
 `src/tokens.css` (Tailwind 4 `@theme static` block plus `:root`) in this project. Tailwind, DTCG or shadcn

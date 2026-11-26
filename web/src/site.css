@@ -1054,6 +1054,148 @@ figcaption {
   text-align: center;
 }
 
+/* The camera inside the page: the frame at its own shape, the model's square drawn over it */
+.cam {
+  display: grid;
+  gap: var(--space-md);
+  align-content: start;
+}
+.cam__view {
+  position: relative;
+  width: min(100%, calc(70svh * (var(--cam-ar, 4 / 3))));
+  aspect-ratio: var(--cam-ar, 4 / 3);
+  margin-inline: auto;
+  overflow: hidden;
+  background: var(--color-ink);
+}
+.cam__view video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cam__guide {
+  position: absolute;
+  aspect-ratio: 1;
+  border: 2px solid var(--color-paper);
+  box-shadow: 0 0 0 100vmax var(--color-scrim);
+  pointer-events: none;
+}
+.cam__view--wide .cam__guide {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  translate: -50% 0;
+}
+.cam__view--tall .cam__guide {
+  left: 0;
+  right: 0;
+  top: 50%;
+  translate: 0 -50%;
+}
+.cam__guide span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: var(--space-2xs) var(--space-xs);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: 500 var(--text-xs) / 1.2 var(--font-display);
+  font-variation-settings: "opsz" 12;
+}
+.cam__wait {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--color-paper);
+}
+.cam__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+/* While the model reads the photo: one line passes over what it is reading (the square, or with zoom the
+   whole photo). Under reduced motion the square only turns green. */
+.sweep {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.sweep::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 30%;
+  border-bottom: 2px solid var(--color-paper);
+  background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--color-paper) 40%, transparent));
+  translate: 0 -100%;
+  animation: sweep 1.5s var(--ease-in-out) infinite;
+}
+@keyframes sweep {
+  to {
+    translate: 0 333%;
+  }
+}
+.photo__box.is-scanning {
+  border-color: var(--color-accent);
+  transition: border-color var(--dur-short) var(--ease-out);
+}
+
+/* The answer settles into place: it drops in a few pixels and the bin's name follows a beat later */
+@media (prefers-reduced-motion: no-preference) {
+  .answer {
+    animation: settle var(--dur-long) var(--ease-out) both;
+  }
+  .answer h2 {
+    animation: settle-name var(--dur-long) var(--ease-out) 90ms both;
+  }
+}
+@keyframes settle {
+  from {
+    opacity: 0;
+    translate: 0 -14px;
+  }
+}
+@keyframes settle-name {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sweep {
+    display: none;
+  }
+  .photo__box.is-scanning {
+    transition: none;
+  }
+}
+
+/* Battery warning: a rule in the e-waste bin's colour, because it names where the item must go */
+.warn {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  border-left: var(--rule-heavy) solid var(--bin);
+  background: var(--color-paper-2);
+}
+.warn svg {
+  margin-top: var(--space-3xs);
+  color: var(--bin);
+}
+.warn h2 {
+  font-size: var(--text-title);
+  line-height: 1.1;
+}
+.warn p {
+  margin-top: var(--space-2xs);
+  font-size: var(--text-md);
+}
+
 .panel {
   display: grid;
   gap: var(--space-lg);
@@ -1084,6 +1226,7 @@ figcaption {
 }
 .confirm div {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-xs);
 }
 .thanks {

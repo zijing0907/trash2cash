@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Heart, RotateCcw, ScanLine, X } from "lucide-react";
+import { Check, Heart, RotateCcw, ScanLine, TriangleAlert, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 
@@ -9,8 +9,8 @@ import { Button, ErrorNote } from "../../components/ui";
 import { api } from "../../lib/api";
 import { useMe, useModelInfo } from "../../lib/hooks";
 import { percent } from "../../lib/image";
-import { binInfo, classInfo, OTHER_LABEL } from "../../lib/recycling";
-import type { ScanResult } from "../../lib/types";
+import { binInfo, classesIn, classInfo, OTHER_LABEL } from "../../lib/recycling";
+import { binLevelAnswer, type ClassProb, type ScanResult } from "../../lib/types";
 import { GradCamPanel } from "./GradCamPanel";
 import { LabelPicker } from "./LabelPicker";
 
@@ -47,11 +47,17 @@ export function ScanResultView({ result, file, photoUrl, zoom, onReset }: Props)
     : null;
   // The answer came from the user (a correction, or a pick after "not sure"): show no model confidence
   const fromUser = label !== null && (result.unsure || label !== result.predicted_class);
+  // Not sure of the item but sure of the bin (say, glass of an unclear colour): name the bin, ask which item
+  const binLevel = binLevelAnswer({ ...result, user_label: label });
+  const binClasses = binLevel ? classesIn(binLevel, model?.bins) : [];
 
   return (
     <div className="scan-grid scan-grid--result">
       {/* The answer first (on phones it is all that fits on the first screen); the photo and heat map follow */}
       <div className="panel" aria-live="polite">
+        {/* Safety first: shown above any answer, until the user says what the item is */}
+        {result.battery_warning && !label && <BatteryWarning chance={result.battery_chance ?? 0} />}
+
         {item && bin ? (
           <Verdict item={item} bin={bin} confidence={fromUser ? null : result.confidence} fromUser={fromUser} />
         ) : label === OTHER_LABEL ? (
@@ -66,6 +72,8 @@ export function ScanResultView({ result, file, photoUrl, zoom, onReset }: Props)
               or ask your local recycling centre.
             </p>
           </div>
+        ) : binLevel ? (
+          <BinVerdict bin={binLevel} confidence={result.bin_confidence ?? 0} classes={binClasses} top3={result.top3} />
         ) : (
           <NotSure result={result} onPick={(l) => saveLabel.mutate(l)} busy={saveLabel.isPending} />
         )}
@@ -87,6 +95,28 @@ export function ScanResultView({ result, file, photoUrl, zoom, onReset }: Props)
               </Button>
               <Button variant="secondary" small onClick={() => setPicking(true)}>
                 <X size={16} aria-hidden /> No, it's…
+              </Button>
+            </div>
+          </div>
+        )}
+        {/* After a bin-level answer, ask which of the bin's items it was: the label the next model learns from */}
+        {binLevel && !picking && (
+          <div className="confirm" data-capture="which-one">
+            <p>Which one is it? Your answer teaches the model.</p>
+            <div>
+              {binClasses.map((c) => (
+                <Button
+                  key={c}
+                  variant="secondary"
+                  small
+                  onClick={() => saveLabel.mutate(c)}
+                  disabled={saveLabel.isPending}
+                >
+                  {classInfo(c).name}
+                </Button>
+              ))}
+              <Button variant="secondary" small onClick={() => setPicking(true)}>
+                Something else
               </Button>
             </div>
           </div>
@@ -147,7 +177,6 @@ export function ScanResultView({ result, file, photoUrl, zoom, onReset }: Props)
         />
         <GradCamPanel file={file} classIndex={result.class_index} className={result.predicted_class} zoom={zoom} />
       </div>
-
     </div>
   );
 }
@@ -189,6 +218,72 @@ function Verdict({
             </ul>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Sure of the bin, not of the item: the bin in its colour, what goes in it, and the tips for those items. */
+function BinVerdict({
+  bin,
+  confidence,
+  classes,
+  top3,
+}: {
+  bin: string;
+  confidence: number;
+  classes: string[];
+  top3: ClassProb[];
+}) {
+  const b = binInfo(bin);
+  // Tips for the items the model was weighing up first, then the bin's other items; no repeats, at most four
+  const rank = (c: string) => {
+    const i = top3.findIndex((p) => p.class === c);
+    return i === -1 ? top3.length : i;
+  };
+  const ordered = [...classes].sort((x, y) => rank(x) - rank(y));
+  const tips = [...new Set(ordered.flatMap((c) => classInfo(c).tips))].slice(0, 4);
+  return (
+    <div className={`answer ${b.cls}`} data-capture="bin-answer">
+      <div className="answer__top">
+        <p className="answer__said">
+          {b.itemsAre
+            ? `It’s ${b.itemsAre}, but we can’t tell ${b.tellApart}. We’re ${percent(confidence)} sure of the bin. It goes in the`
+            : `We can’t tell exactly what it is, but we’re ${percent(confidence)} sure of the bin. It goes in the`}
+        </p>
+        <h2>{b.title}</h2>
+      </div>
+      <div className="answer__body">
+        <p>{b.where}</p>
+        {tips.length > 0 && (
+          <div>
+            <p className="label">Before you bin it</p>
+            <ul>
+              {tips.map((t) => (
+                <li key={t}>
+                  <Check size={16} aria-hidden />
+                  {t}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** A battery in a household bin can start a fire in the rubbish truck, so even a small chance is mentioned. */
+function BatteryWarning({ chance }: { chance: number }) {
+  return (
+    <div className="warn bin-ewaste" role="note" data-capture="battery">
+      <TriangleAlert size={20} aria-hidden />
+      <div>
+        <h2>This could be a battery</h2>
+        <p>
+          The model gives it a {percent(chance)} chance. Batteries never go in a household bin: they can start fires in
+          rubbish trucks. If it is one, take it to an e-waste collection point.
+        </p>
       </div>
     </div>
   );
