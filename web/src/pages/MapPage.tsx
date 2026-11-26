@@ -57,6 +57,12 @@ export function MapPage() {
         <div>
           <h1>Drop-off points</h1>
           <p className="lead">Where to hand in recycling, and how full each bin is.</p>
+          <p className="small-print">
+            Too much to carry?{" "}
+            <Link to="/pickup" className="link">
+              Book a home pickup
+            </Link>
+          </p>
         </div>
         <Button variant="secondary" onClick={position.locate} busy={position.busy}>
           <LocateFixed size={18} aria-hidden /> Nearest to me

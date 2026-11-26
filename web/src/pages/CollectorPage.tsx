@@ -5,6 +5,7 @@ import { useState } from "react";
 import { BinBadge } from "../components/BinBadge";
 import { MapView } from "../components/MapView";
 import { RoleGate } from "../components/RoleGate";
+import { CollectorHome } from "./CollectorHome";
 import { Button, ErrorNote, Spinner } from "../components/ui";
 import { api } from "../lib/api";
 import { dateTime, kgNum, km } from "../lib/format";
@@ -50,6 +51,7 @@ function Jobs() {
         <>
           <Mine jobs={jobs.data.mine} me={position.at} />
           <Open jobs={jobs.data.open} me={position.at} />
+          <CollectorHome me={position.at} />
           <Done jobs={jobs.data.done} />
         </>
       )}

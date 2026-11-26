@@ -351,3 +351,40 @@ export interface CollectorJobs {
   done: Job[];
 }
 
+// ---- Phase 6b: home pickups
+
+export type HomeStatus = "requested" | "taken" | "done" | "missed" | "cancelled";
+export type Slot = "morning" | "afternoon" | "evening";
+
+export interface HomePickup {
+  id: number;
+  status: HomeStatus;
+  streams: string[];
+  rough_kg: number;
+  day: string;
+  slot: Slot;
+  created_at: string;
+  taken_at: string | null;
+  finished_at: string | null;
+  collector: { id: number; name: string } | null;
+  missed_reason: string | null;
+  /** What the collector weighed at the door */
+  weighed: { stream_key: string; weight_g: number }[];
+  points: number | null;
+  /** The position rounded to about a kilometre: all a collector sees before taking it */
+  area: [number, number];
+  // Only for the resident, admins and the collector who took it
+  address?: string;
+  lat?: number;
+  lng?: number;
+  note?: string;
+  resident?: { name: string };
+  has_photo?: boolean;
+}
+
+export interface CollectorHomePickups {
+  open: HomePickup[];
+  mine: HomePickup[];
+  done: HomePickup[];
+}
+

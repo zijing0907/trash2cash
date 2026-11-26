@@ -50,7 +50,13 @@ function MemberCard() {
       <div className="member__balance">
         <p className="label">Your points</p>
         <p className="figure-num member__figure">{c.balance.toLocaleString("en-MY")}</p>
-        <p>Hand in sorted recycling at a drop-off point. Staff weigh it and add the points here.</p>
+        <p>
+          Hand in sorted recycling at a drop-off point, or{" "}
+          <Link to="/pickup" className="link">
+            book a home pickup
+          </Link>{" "}
+          for 5 kg or more. Staff weigh it and add the points here.
+        </p>
         <ButtonLink to="/rewards" variant="secondary">
           <Gift size={18} aria-hidden /> See rewards
         </ButtonLink>

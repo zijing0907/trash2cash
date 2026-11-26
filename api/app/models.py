@@ -1,14 +1,15 @@
 """Database tables. Milestone 2: users and scans. Milestone 3: drop-off points, deposits weighed by an operator,
 the points ledger and rewards. Milestone 4: pickups, which the admin board forecasts. Phase 4: pickup jobs that
-collectors take. Phase 6: reports from the public that a bin is full."""
+collectors take. Phase 6: reports from the public that a bin is full, and home pickup requests."""
 
 import enum
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import (
     JSON,
     Boolean,
+    Date,
     DateTime,
     Enum,
     Float,
@@ -151,14 +152,15 @@ class Deposit(Base):
     __table_args__ = (Index("ix_deposits_point_created", "point_id", "created_at"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    point_id: Mapped[int] = mapped_column(ForeignKey("drop_points.id"))
+    # Empty for a home pickup (Phase 6b): weighed by the collector at the resident's door, not at a point
+    point_id: Mapped[int | None] = mapped_column(ForeignKey("drop_points.id"))
     resident_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     operator_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     points: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
     lines: Mapped[list["DepositLine"]] = relationship(back_populates="deposit", order_by="DepositLine.id")
-    point: Mapped[DropPoint] = relationship()
+    point: Mapped[DropPoint | None] = relationship()
     resident: Mapped[User] = relationship(foreign_keys=[resident_id])
 
 
@@ -309,3 +311,52 @@ class BinReport(Base):
     level: Mapped[ReportLevel] = mapped_column(Enum(ReportLevel, name="report_level", native_enum=False, length=20))
     photo_path: Mapped[str | None] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class HomeStatus(enum.StrEnum):
+    requested = "requested"  # waiting for a collector
+    taken = "taken"  # a collector is coming
+    done = "done"  # weighed at the door; the resident got points
+    missed = "missed"  # the collector came but could not collect (the reason says why)
+    cancelled = "cancelled"  # the resident withdrew it before a collector took it
+
+
+class Slot(enum.StrEnum):
+    morning = "morning"  # 8 am to 12 pm
+    afternoon = "afternoon"  # 12 to 5 pm
+    evening = "evening"  # 5 to 8 pm
+
+
+class HomePickup(Base):
+    """A resident asks a collector to come to their home for a large amount of recyclables (Phase 6b).
+
+    The address, the exact position, the note and the photo are shown only to the resident, admins and the collector
+    who takes it; other collectors see the area, the day and the rough weight.
+    """
+
+    __tablename__ = "home_pickups"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    resident_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    status: Mapped[HomeStatus] = mapped_column(
+        Enum(HomeStatus, name="home_status", native_enum=False, length=20), default=HomeStatus.requested, index=True
+    )
+    streams: Mapped[list[str]] = mapped_column(JSON)  # the bins the items belong in, e.g. ["blue bin"]
+    rough_kg: Mapped[float] = mapped_column(Float)
+    address: Mapped[str] = mapped_column(String(200))
+    lat: Mapped[float] = mapped_column(Float)
+    lng: Mapped[float] = mapped_column(Float)
+    note: Mapped[str] = mapped_column(String(200), default="")
+    day: Mapped[date] = mapped_column(Date)
+    slot: Mapped[Slot] = mapped_column(Enum(Slot, name="pickup_slot", native_enum=False, length=20))
+    photo_path: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    collector_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    taken_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    missed_reason: Mapped[str | None] = mapped_column(String(200))
+    deposit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("deposits.id", ondelete="SET NULL"))
+
+    resident: Mapped[User] = relationship(foreign_keys=[resident_id])
+    collector: Mapped[User | None] = relationship(foreign_keys=[collector_id])
+    deposit: Mapped[Deposit | None] = relationship()

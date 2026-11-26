@@ -1,11 +1,13 @@
 import type {
   Board,
   Card,
+  CollectorHomePickups,
   CollectorJobs,
   DepositOut,
   DropPoint,
   DropPointAdmin,
   DropOffMap,
+  HomePickup,
   Job,
   ModelInfo,
   PointsPage,
@@ -154,6 +156,41 @@ export const api = {
   skipBin: (jobId: number, itemId: number, reason: string) =>
     request<Job>(`/collector/jobs/${jobId}/items/${itemId}/skip`, json("POST", { reason })),
 };
+
+export interface HomeBooking {
+  streams: string[];
+  rough_kg: number;
+  address: string;
+  lat: number;
+  lng: number;
+  day: string;
+  slot: string;
+  note: string;
+  photo: File;
+}
+
+/** Home pickups (Phase 6b) */
+export const homeApi = {
+  book: (b: HomeBooking) => {
+    const form = new FormData();
+    form.append("streams", b.streams.join(","));
+    for (const k of ["rough_kg", "address", "lat", "lng", "day", "slot", "note"] as const) form.append(k, String(b[k]));
+    form.append("photo", b.photo);
+    return request<HomePickup>("/home-pickups", { method: "POST", body: form });
+  },
+  mine: () => request<HomePickup[]>("/home-pickups/mine"),
+  cancel: (id: number) => request<HomePickup>(`/home-pickups/${id}/cancel`, { method: "POST" }),
+  forCollector: () => request<CollectorHomePickups>("/collector/home-pickups"),
+  take: (id: number) => request<HomePickup>(`/collector/home-pickups/${id}/take`, { method: "POST" }),
+  release: (id: number) => request<HomePickup>(`/collector/home-pickups/${id}/release`, { method: "POST" }),
+  collect: (id: number, lines: { stream_key: string; weight_kg: number }[]) =>
+    request<HomePickup>(`/collector/home-pickups/${id}/collect`, json("POST", lines)),
+  missed: (id: number, reason: string) =>
+    request<HomePickup>(`/collector/home-pickups/${id}/missed`, json("POST", { reason })),
+  forAdmin: () => request<HomePickup[]>("/admin/home-pickups"),
+};
+
+export const homePhotoUrl = (id: number) => `/api/home-pickups/${id}/photo`;
 
 /** A report's photo (admins) */
 export const reportPhotoUrl = (reportId: number) => `/api/reports/${reportId}/photo`;

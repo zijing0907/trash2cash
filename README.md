@@ -10,7 +10,8 @@ need a pickup.
 > flow (Milestone 2), the trained model, drop-off deposits with points and rewards (Milestone 3), the admin
 > pickup board (Milestone 4), voucher collection and drop-off point setup (Phase 1), the live camera scan
 > with bin-level answers and the battery warning (Phase 2), and the drop-off map with pickup jobs for collectors
-> (Phase 4), and "bin full" reports with a forecast that corrects itself (Phase 6a). Next: home pickup requests.
+> (Phase 4), "bin full" reports with a forecast that corrects itself (Phase 6a), and home pickup requests
+> (Phase 6b). Next: Bahasa Melayu, a community page and the confusion map.
 
 ## What works today
 
@@ -47,6 +48,9 @@ need a pickup.
 - **A forecast that corrects itself:** once a bin has two measured pickups, its fill and inflow are scaled by what
   the collectors' scale showed against what was weighed in (people drop things in without weighing), and the map
   and board say so and by how much.
+- **Home pickups:** for 5 kg or more, a resident books a collector with a photo, a rough weight, a pin on the map
+  and a time of day. Collectors see only the area until one takes it; then they see the address, weigh everything
+  at the door, and the resident gets points for those weights, never for the guess.
 
 ## Origin
 

@@ -442,3 +442,23 @@ One entry per milestone: what was chosen, the alternatives, and why.
   unweighed items per bin (5% to 40%), so the correction can be seen. Most demo bins have fewer than two such
   pickups in six weeks and keep the plain forecast, which is what would happen in real use too.
 
+## Phase 6b: home pickups (26 Nov 2026)
+
+### 8.3 Booked by residents, weighed by collectors
+- **Chose:** a resident with 5 to 500 kg books a pickup: which bins the items belong in, a rough weight, the
+  address and a pin on the map, a day up to two weeks ahead, a time of day and a photo. A collector takes it
+  (a conditional update, so only one does), comes, weighs each bin's share at the door, and the resident gets
+  points for those weights. The resident's guess never earns anything: the same rule as drop-offs, where only
+  what staff weigh counts.
+- **A deposit without a drop-off point:** the weighing is stored as an ordinary deposit with no point (migration
+  0007 makes `deposits.point_id` nullable), credited through the same ledger. It counts in the month's recycled
+  weight but fills no drop-off bin. Points history shows it as "Home pickup".
+- **Privacy:** until a collector takes a pickup, other collectors see only the area (the position rounded to
+  0.01 degree, about a kilometre), the day, the bins and the rough weight. The address, the exact pin, the note,
+  the resident's name and the photo are for the resident, admins and the collector who took it. Location from
+  "Use my location" stays in the browser until the resident books.
+- **When it goes wrong:** before it is taken, the resident can cancel. The collector can hand it back, or mark it
+  missed with a reason (nobody home, much more than booked); the resident can then book again. A resident can have
+  two pickups open at a time.
+- **Not yet:** paying collectors, and letting a resident and a collector message each other.
+
