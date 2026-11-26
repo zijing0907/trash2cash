@@ -340,3 +340,44 @@ One entry per milestone: what was chosen, the alternatives, and why.
   stored times. PostgreSQL converted correctly; SQLite (the tests) stores times without a zone, so the comparison
   broke just after midnight in Malaysia. Boundaries are now converted to UTC before comparing, and zone-less times
   are read as UTC. Caught by the test suite running after midnight, Malaysian time.
+
+## Phase 2: a better scan (26 Nov 2026)
+
+### 6.1 The camera inside the page, and smaller uploads
+- **Chose:** "Open the camera" shows the camera in the page with the model's square drawn over the frame, so
+  people fill the square before they take the photo. The whole frame is sent (zoom search can use all of it).
+  Where the page cannot use the camera (not https, no camera, access blocked), the old "Take a photo" button
+  opens the phone's own camera app instead, and the reason is shown.
+- **Chose:** photos are shrunk in the browser to 1600 pixels on the long side (JPEG, quality 0.9) before upload.
+  The model reads a 128-pixel square and zoom search works on about 1000 pixels a side, so this changes nothing
+  it sees in practice; a 12-megapixel photo goes up about ten times smaller. Photos already small, or in a
+  format the browser cannot decode (HEIC outside Safari), are sent unchanged. Donated photos are the shrunk copy,
+  still eight times the training resolution.
+- **Why not crop to the square in the browser:** zoom search needs the rest of the photo.
+
+### 6.2 Bin-level answers
+- **Chose:** ml-service adds the class probabilities per bin. When the item is below the "not sure" threshold
+  but one bin is above it (brown or green glass, paper or cardboard), the app names that bin, says what it cannot
+  tell apart, and asks which item it was, so the label still reaches the training data. Stored with the scan as
+  `top_bin`, `bin_confidence` and `bin_unsure` (migration 0004; empty for older scans, not filled in afterwards).
+- **The same threshold (0.63):** a confident class always gives a confident bin, so the two answers never
+  disagree. The threshold was chosen for classes on validation data; whether bins deserve a different one has not
+  been measured. To check: run notebook 03's selective-accuracy cell on per-bin probabilities.
+- **The bin can differ from the top class's bin:** trash 34%, plastic 33%, metal 33% is "not sure" as a class but
+  66% orange bin, so the app names the orange bin, not general waste.
+
+### 6.3 The battery warning
+- **Chose:** warn when the battery probability is 10% or more, unless the answer already is a sure battery. It
+  shows above any answer until the user says what the item is. A battery in a household bin can start a fire in
+  the rubbish truck; a needless warning costs a few seconds of reading.
+- **Why 10%:** just above chance for 12 classes (8.3%), so it needs some sign of a battery, not just an undecided
+  model. meta.json can set `battery_warn_at`.
+- **Known weakness:** a plain white photo scores 9.9% battery, the white-background habit the dataset taught the
+  model, so items photographed on white may set it off. The real-photo test will measure how often it fires
+  wrongly and how often it misses.
+
+### 6.4 Two moments of motion
+- **Chose:** the locked system was still. The scan screen now has two moments: a line passing over what the
+  model reads while it works, and the answer settling into place. Both are off under reduced motion
+  (`web/design.md`, Motion). Everything else stays still.
+

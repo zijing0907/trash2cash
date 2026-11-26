@@ -50,6 +50,11 @@ class ScanOut(BaseModel):
     zoomed: bool
     top3: list[ClassProb]
     latency_ms: float
+    top_bin: str | None = Field(default=None, description="The likeliest bin (probabilities summed per bin)")
+    bin_confidence: float | None = None
+    bin_unsure: bool | None = Field(
+        default=None, description="False while unsure is true: the model is sure of the bin, not of the item"
+    )
     user_label: str | None
     photo_donated: bool
 
@@ -60,6 +65,8 @@ class ScanResult(ScanOut):
     class_index: int = Field(description="Pass to /api/explain to see where the model looked")
     threshold: float
     crop_box: list[int] = Field(description="[left, top, right, bottom] of the part of the photo the model saw")
+    battery_chance: float = Field(default=0.0, description="Probability that the item is a battery")
+    battery_warning: bool = Field(default=False, description="Warn: this could be a battery, never a household bin")
 
 
 class LabelIn(BaseModel):

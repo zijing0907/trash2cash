@@ -22,7 +22,7 @@ photo bytes ─► open_photo (EXIF fix, RGB, checks) ─► centre crop 128×12
 |---|---|
 | `GET /health` | `{"status": "ok", "model_version": ...}` |
 | `GET /model` | Classes, bins, threshold, test metrics and version, all from `meta.json` |
-| `POST /predict` (form field `file`; query `zoom`, `tta`) | `model_version`, `top3`, `bin`, `confidence`, `unsure`, `threshold`, `crop_box`, `zoomed`, all `probs`, `dhash`, `latency_ms` |
+| `POST /predict` (form field `file`; query `zoom`, `tta`) | `model_version`, `top3`, `bin`, `confidence`, `unsure`, `threshold`, `crop_box`, `zoomed`, all `probs`, `dhash`, `latency_ms`; the bin-level answer `top_bin`, `bin_confidence`, `bin_unsure`; `battery_chance`, `battery_warning` |
 | `POST /explain` (form field `file`; query `class_index`, `zoom`) | Grad-CAM overlay as a PNG (`X-Class`, `X-Model-Version` headers) |
 
 Interactive docs: http://localhost:8001/docs once the service runs.

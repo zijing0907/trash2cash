@@ -1,11 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { PhotoWithBox } from "../../components/PhotoWithBox";
 import { Button, ErrorNote } from "../../components/ui";
 import { api } from "../../lib/api";
 import { useMe } from "../../lib/hooks";
+import { shrinkPhoto } from "../../lib/photo";
 import type { ScanResult } from "../../lib/types";
 import { PhotoPicker } from "./PhotoPicker";
 import { ScanResultView } from "./ScanResultView";
@@ -22,6 +23,8 @@ export function ScanPage() {
   const [result, setResult] = useState<{ scan: ScanResult; zoom: boolean } | null>(null);
   const [zoom, setZoom] = useState(false);
   const [donate, setDonate] = useState(false);
+  // The smaller copy that is uploaded; the photo shows at once and is swapped for the copy when it is ready
+  const upload = useRef<Promise<File> | null>(null);
 
   // Free the preview's memory when the photo changes or the page closes
   useEffect(() => {
@@ -30,7 +33,8 @@ export function ScanPage() {
   }, [photo]);
 
   const scan = useMutation({
-    mutationFn: (v: { file: File; zoom: boolean; donate: boolean }) => api.scan(v.file, v),
+    mutationFn: async (v: { file: File; zoom: boolean; donate: boolean }) =>
+      api.scan(await (upload.current ?? v.file), v),
     onSuccess: (scanResult, v) => {
       setResult({ scan: scanResult, zoom: v.zoom });
       void qc.invalidateQueries({ queryKey: ["scans"] });
@@ -43,6 +47,12 @@ export function ScanPage() {
     setResult(null);
     setDonate(false); // consent is given per photo, never carried over
     setPhoto({ file, url: URL.createObjectURL(file) });
+    const ready = shrinkPhoto(file);
+    upload.current = ready;
+    void ready.then((small) => {
+      // The result screen draws the model's box in the uploaded photo's pixels, so it must show that copy
+      if (upload.current === ready && small !== file) setPhoto({ file: small, url: URL.createObjectURL(small) });
+    });
   }
 
   function reset() {
@@ -50,6 +60,7 @@ export function ScanPage() {
     setResult(null);
     setDonate(false);
     setPhoto(null);
+    upload.current = null;
   }
 
   return (
@@ -62,7 +73,11 @@ export function ScanPage() {
 
       {photo && !result && (
         <div className="scan-grid">
-          <PhotoWithBox src={photo.url} label="What the model will see" />
+          <PhotoWithBox
+            src={photo.url}
+            label={scan.isPending ? (zoom ? "Searching the photo" : "Reading the square") : "What the model will see"}
+            scanning={scan.isPending ? (zoom ? "photo" : "box") : undefined}
+          />
           <div className="panel">
             <h2>Looks good?</h2>
             <p>The model looks at the bright square. If the item is small or off-centre, let it search the photo.</p>

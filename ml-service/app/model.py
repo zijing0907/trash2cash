@@ -48,6 +48,22 @@ def predict(model: keras.Model, arr: np.ndarray, tta: bool = False) -> np.ndarra
     return model(x, training=False).numpy().mean(axis=0)
 
 
+# A battery in a household bin can start a fire in the rubbish truck, so the app warns about batteries long before it
+# would name one. 0.10 is just above chance for 12 classes (1/12 = 0.083): the warning needs some sign of a battery,
+# not just an undecided model. meta.json can override it with "battery_warn_at". Not measured on real photos yet
+# (docs/decisions.md 6.3).
+BATTERY_WARN_AT = 0.10
+
+
+def bin_probs(probs: np.ndarray, class_names: list[str], bins: dict[str, str]) -> dict[str, float]:
+    """Probability of each bin: the sum over the classes that go in it. Classes without a bin are left out."""
+    out: dict[str, float] = {}
+    for name, p in zip(class_names, probs, strict=True):
+        if name in bins:
+            out[bins[name]] = out.get(bins[name], 0.0) + float(p)
+    return out
+
+
 def zoom_search(model: keras.Model, im: Image.Image, top_k: int = 5) -> tuple[np.ndarray, tuple[int, ...], np.ndarray]:
     """Look at ~20 overlapping crops and average the top_k most confident ones (a consensus), so one odd crop
     cannot decide on its own. Returns (consensus probs, box of the crop that best shows the consensus class in
@@ -158,6 +174,7 @@ class WasteClassifier:
     gradcam_layer: str
     grad_model: keras.Model = field(repr=False)
     available_keys: list[str] = field(default_factory=list)
+    battery_warn_at: float = BATTERY_WARN_AT  # warn that the item could be a battery from this probability
 
     @classmethod
     def load(cls, model_dir: Path, requested_key: str | None = None) -> "WasteClassifier":
@@ -184,6 +201,7 @@ class WasteClassifier:
             available_keys=[
                 k for k in SERVABLE_KEYS if k in meta["models"] and (model_dir / meta["models"][k]["file"]).exists()
             ],
+            battery_warn_at=float(meta.get("battery_warn_at", BATTERY_WARN_AT)),
         )
         clf.warm_up()
         log.info(
@@ -251,6 +269,13 @@ class WasteClassifier:
         top3 = [int(i) for i in np.argsort(probs)[::-1][:3]]
         # "Not sure" uses the same threshold with or without zoom search, as notebook 02 now does too
         unsure = bool(probs[k] < self.threshold)
+        # Bin-level answer: when the model cannot tell brown from green glass, it can still be sure of the brown bin.
+        # The same threshold applies; a confident class always gives a confident bin (its bin holds at least as much).
+        per_bin = bin_probs(probs, self.class_names, self.bins)
+        top_bin = max(per_bin, key=per_bin.__getitem__) if per_bin else None
+        bin_confidence = per_bin.get(top_bin, 0.0) if top_bin else 0.0
+        battery = float(probs[self.class_names.index("battery")]) if "battery" in self.class_names else 0.0
+        sure_battery = self.class_names[k] == "battery" and not unsure  # the answer itself already says e-waste
         log.info("predict %s: %s (%.2f)%s", self.version, verdict(probs, self.class_names, self.threshold),
                  probs[k], " zoomed" if zoomed else "")  # fmt: skip
         return {
@@ -266,6 +291,11 @@ class WasteClassifier:
             "tta": tta,
             "probs": {c: float(p) for c, p in zip(self.class_names, probs, strict=True)},
             "dhash": dhash(im),
+            "top_bin": top_bin,
+            "bin_confidence": float(bin_confidence),
+            "bin_unsure": bool(top_bin is None or bin_confidence < self.threshold),
+            "battery_chance": battery,
+            "battery_warning": bool(battery >= self.battery_warn_at and not sure_battery),
         }
 
     def explain_png(self, im: Image.Image, class_idx: int | None = None, zoom: bool = False) -> tuple[bytes, int]:

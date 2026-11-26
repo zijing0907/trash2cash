@@ -73,6 +73,11 @@ def prediction(top: str = "plastic", confidence: float = 0.91, unsure: bool = Fa
         "probs": {c: 0.0 for c in CLASS_NAMES},
         "dhash": "0123456789abcdef",
         "latency_ms": 42.0,
+        "top_bin": BINS[top],
+        "bin_confidence": confidence,
+        "bin_unsure": unsure,
+        "battery_chance": 0.0,
+        "battery_warning": False,
     }
 
 

@@ -7,16 +7,21 @@ verifies the items at a drop-off point. Admins see how full each drop-off point 
 need a pickup.
 
 > **Status:** work in progress. Done: the ML service (Milestone 1), the API and web app with the full scan
-> flow (Milestone 2), the trained model, drop-off deposits with points and rewards (Milestone 3) and the
-> admin pickup board (Milestone 4). Next: a live demo and real-photo results. Next: drop-off deposits, points and rewards (Milestone 3), the admin
-> dashboard with pickup forecasts and a live demo (Milestone 4), and the model card with real-photo
-> results (Milestone 5).
+> flow (Milestone 2), the trained model, drop-off deposits with points and rewards (Milestone 3), the admin
+> pickup board (Milestone 4), voucher collection and drop-off point setup (Phase 1), and the live camera scan
+> with bin-level answers and the battery warning (Phase 2). Next: the model running in the browser and a public
+> link, then real-photo results.
 
 ## What works today
 
-- **Scan:** take or upload a photo (JPEG, PNG, WebP or iPhone HEIC); the app shows the square the model
-  looks at, which bin the item goes in and how to prepare it. Below a confidence threshold chosen on
-  validation data, it says **"not sure"** and asks instead of guessing.
+- **Scan:** open the camera inside the page, with the square the model reads drawn over it, or take or upload a
+  photo (JPEG, PNG, WebP or iPhone HEIC). Photos are shrunk to 1600 pixels before upload. The app shows which bin
+  the item goes in and how to prepare it. Below a confidence threshold chosen on validation data, it says
+  **"not sure"** and asks instead of guessing.
+- **Bin-level answers:** when the model cannot tell the item apart but is sure of the bin (brown or green glass:
+  both go in the brown bin), it names the bin and asks which item it was.
+- **Battery warning:** any real chance that the item is a battery (10% or more) brings a warning, whatever the
+  answer, because batteries in household bins start fires in rubbish trucks.
 - **Explain:** a Grad-CAM heat map shows which part of the photo drove the answer.
 - **Teach:** confirm or correct every answer, or say "something else"; optionally donate the photo
   (and delete it again). These labels are the material for retraining.
@@ -126,7 +131,10 @@ logs are in [`ml/results/`](ml/results/).
   without those changes, it loses nothing measurable on the test split (−0.005 macro F1, 95% interval −0.025 to
   +0.015) and gains 0.33 on unseen backgrounds. Phone photos look more like the second test.
 - **"Not sure":** below 63% confidence the app asks instead of answering; 0.63 is the lowest confidence at which
-  CNN-R was right at least 90% of the time on validation data.
+  CNN-R was right at least 90% of the time on validation data. The same 63% applies to bins (the class
+  probabilities added up per bin); that use of it has not been checked on validation data yet.
+- **Battery warning from 10%:** chosen, not measured. A plain white photo already scores 9.9% battery (the
+  white-background habit of the dataset), so photos on white may warn more often than they should.
 - **Not measured yet:** accuracy on our own phone photos (notebook 02, part 4, has no photos yet). That is the
   number that matters most for real use.
 - **Limits:** one item per photo; 12 classes only; it cannot tell whether a container is clean or which plastic it is.

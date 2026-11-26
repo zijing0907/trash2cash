@@ -56,6 +56,15 @@ class PredictResponse(BaseModel):
     tta: bool = Field(description="Whether test-time augmentation was used")
     probs: dict[str, float] = Field(description="Probability of every class")
     dhash: str = Field(description="Difference hash of the photo (16 hex characters), for the repeat-photo flag")
+    top_bin: str | None = Field(description="The most likely bin: probabilities summed over the classes in each bin")
+    bin_confidence: float = Field(description="Probability of top_bin")
+    bin_unsure: bool = Field(
+        description="True if bin_confidence < threshold. When unsure is true but this is false, answer at bin level"
+    )
+    battery_chance: float = Field(description="Probability that the item is a battery")
+    battery_warning: bool = Field(
+        description="True if battery_chance >= battery_warn_at and the answer is not already a sure battery"
+    )
     latency_ms: float
 
 
@@ -67,6 +76,7 @@ class ModelResponse(BaseModel):
     img_size: int
     bins: dict[str, str]
     threshold: float
+    battery_warn_at: float = Field(description="From this battery probability on, the app warns about batteries")
     use_tta: bool
     gradcam_layer: str
     metrics: dict[str, float] = Field(description="Test-set metrics exactly as stored in meta.json")
@@ -129,6 +139,7 @@ def model_info(request: Request):
         "img_size": clf.img_size,
         "bins": clf.bins,
         "threshold": clf.threshold,
+        "battery_warn_at": clf.battery_warn_at,
         "use_tta": clf.use_tta,
         "gradcam_layer": clf.gradcam_layer,
         "metrics": clf.metrics,

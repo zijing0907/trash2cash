@@ -8,7 +8,7 @@ import { api } from "../lib/api";
 import { useModelInfo } from "../lib/hooks";
 import { percent } from "../lib/image";
 import { binInfo, classInfo, OTHER_LABEL } from "../lib/recycling";
-import type { Scan } from "../lib/types";
+import { binLevelAnswer, type Scan } from "../lib/types";
 
 /** The scans part of the account page: per-bin summary and the list, newest first. */
 export function ScanHistory() {
@@ -105,21 +105,37 @@ function ScanRow({ scan }: { scan: Scan }) {
   });
   const label = scan.user_label;
   const shown = label && label !== OTHER_LABEL ? label : scan.predicted_class;
-  const bin = label === OTHER_LABEL ? null : label ? (model?.bins[label] ?? classInfo(label).bin) : scan.predicted_bin;
+  const binLevel = binLevelAnswer(scan); // sure of the bin, not of the item
+  const bin =
+    label === OTHER_LABEL
+      ? null
+      : label
+        ? (model?.bins[label] ?? classInfo(label).bin)
+        : (binLevel ?? scan.predicted_bin);
   const info = classInfo(shown);
+  const binItems = binLevel ? binInfo(binLevel).itemsAre : undefined;
   const when = new Date(scan.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
   return (
     <li>
       <div>
         <h3>
-          {label === OTHER_LABEL ? "Something else" : info.name}
+          {label === OTHER_LABEL
+            ? "Something else"
+            : binItems
+              ? binItems.charAt(0).toUpperCase() + binItems.slice(1)
+              : info.name}
           {label && label !== scan.predicted_class && (
             <small>model said {classInfo(scan.predicted_class).name.toLowerCase()}</small>
           )}
         </h3>
         <p>
-          <time dateTime={scan.created_at}>{when}</time>, {scan.unsure && !label ? "model not sure" : `${percent(scan.confidence)} sure`}
+          <time dateTime={scan.created_at}>{when}</time>,{" "}
+          {binLevel
+            ? `${percent(scan.bin_confidence ?? 0)} sure of the bin`
+            : scan.unsure && !label
+              ? "model not sure"
+              : `${percent(scan.confidence)} sure`}
         </p>
       </div>
       {bin && <BinBadge bin={bin} />}

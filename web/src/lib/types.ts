@@ -16,6 +16,11 @@ export interface Scan {
   zoomed: boolean;
   top3: ClassProb[];
   latency_ms: number;
+  /** Bin-level answer: the likeliest bin, its probability, and whether that is below the threshold (null on
+   * scans made before it existed). unsure true with bin_unsure false = sure of the bin, not of the item. */
+  top_bin?: string | null;
+  bin_confidence?: number | null;
+  bin_unsure?: boolean | null;
   user_label: string | null;
   photo_donated: boolean;
 }
@@ -24,6 +29,15 @@ export interface ScanResult extends Scan {
   class_index: number;
   threshold: number;
   crop_box: [number, number, number, number];
+  battery_chance?: number;
+  /** The item could be a battery: say so, whatever the answer */
+  battery_warning?: boolean;
+}
+
+/** The bin the app names for a scan without a user label: only when the model was sure of the bin but not
+ * of the item (otherwise the item's own bin, or nothing, is shown). */
+export function binLevelAnswer(scan: Scan): string | null {
+  return !scan.user_label && scan.unsure && scan.bin_unsure === false && scan.top_bin ? scan.top_bin : null;
 }
 
 export type Role = "resident" | "operator" | "admin";
@@ -46,6 +60,8 @@ export interface ModelInfo {
   img_size: number;
   bins: Record<string, string>;
   threshold: number;
+  /** From this battery probability on, the result warns that the item could be a battery */
+  battery_warn_at?: number;
   use_tta: boolean;
   gradcam_layer: string;
   metrics: Record<string, number>;
@@ -197,7 +213,15 @@ export interface Board {
   today: string;
   is_demo: boolean;
   points: BoardPoint[];
-  run: { stops: { point_id: number; name: string; km_from_previous: number; bins: string[] }[]; total_km: number };
+  run: {
+    stops: {
+      point_id: number;
+      name: string;
+      km_from_previous: number;
+      bins: string[];
+    }[];
+    total_km: number;
+  };
   month: {
     from: string;
     kg_by_stream: { stream_key: string; stream_name: string; kg: number }[];

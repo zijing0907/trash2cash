@@ -31,6 +31,10 @@ export interface BinInfo {
   /** CSS class that sets --bin to this bin's colour token (site.css) */
   cls: string;
   icon: LucideIcon;
+  /** For bins that take several kinds of item: what they are together, and what the model may not tell apart
+   * (used when the model is sure of the bin but not of the item) */
+  itemsAre?: string;
+  tellApart?: string;
 }
 
 export const BINS: Record<string, BinInfo> = {
@@ -39,6 +43,8 @@ export const BINS: Record<string, BinInfo> = {
     holds: "Paper & cardboard",
     where: "Blue recycling bin, or a recycling buy-back centre.",
     cls: "bin-blue",
+    itemsAre: "paper or cardboard",
+    tellApart: "which one",
     icon: Newspaper,
   },
   "brown bin": {
@@ -46,6 +52,8 @@ export const BINS: Record<string, BinInfo> = {
     holds: "Glass bottles & jars",
     where: "Brown recycling bin, or a recycling buy-back centre.",
     cls: "bin-brown",
+    itemsAre: "glass",
+    tellApart: "which colour",
     icon: Wine,
   },
   "orange bin": {
@@ -53,6 +61,8 @@ export const BINS: Record<string, BinInfo> = {
     holds: "Plastic, aluminium & metal cans",
     where: "Orange recycling bin, or a recycling buy-back centre.",
     cls: "bin-orange",
+    itemsAre: "plastic or metal",
+    tellApart: "which one",
     icon: CupSoda,
   },
   "e-waste collection": {
@@ -67,6 +77,8 @@ export const BINS: Record<string, BinInfo> = {
     holds: "Clothes, shoes & fabric",
     where: "A clothes donation bin, charity shop or textile recycling bin.",
     cls: "bin-textile",
+    itemsAre: "clothes or shoes",
+    tellApart: "which one",
     icon: Shirt,
   },
   "food waste": {
@@ -92,6 +104,13 @@ export const UNKNOWN_BIN: BinInfo = {
   cls: "bin-general",
   icon: Recycle,
 };
+
+/** The item kinds the model sends to a bin, in the model's order (meta.json's mapping when it is loaded). */
+export function classesIn(bin: string, bins?: Record<string, string>): string[] {
+  return bins
+    ? Object.keys(bins).filter((c) => bins[c] === bin)
+    : Object.keys(CLASSES).filter((c) => CLASSES[c]!.bin === bin);
+}
 
 export function binInfo(bin: string | null | undefined): BinInfo {
   return (bin && BINS[bin]) || UNKNOWN_BIN;

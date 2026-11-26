@@ -76,6 +76,13 @@ export function ModelPage() {
               <dd className="figure-num">{percent(model.threshold)}</dd>
               <dd>The lowest confidence at which the model was right at least 90% of the time on validation data</dd>
             </div>
+            {model.battery_warn_at !== undefined && (
+              <div>
+                <dt>Battery warning from</dt>
+                <dd className="figure-num">{percent(model.battery_warn_at)}</dd>
+                <dd>Chosen, not measured: just above chance for 12 classes. Checked on real photos in a later phase</dd>
+              </div>
+            )}
           </dl>
           <p className="small-print muted metrics__note">
             Test metrics are on the held-out test split of the dataset (photos never used for training or tuning).
@@ -96,7 +103,9 @@ export function ModelPage() {
             4 blocks of two 3×3 convolutions with batch norm, then global average pooling and a dense layer.
           </Step>
           <Step title="12 probabilities">
-            The top class decides the bin, unless its probability is below the “not sure” threshold.
+            The top class decides the bin, unless its probability is below the “not sure” threshold. Then the
+            probabilities are added up per bin: if one bin clears the threshold (glass, but not sure which colour), the
+            app names that bin. Any real chance of a battery brings a warning.
           </Step>
         </ol>
       </section>

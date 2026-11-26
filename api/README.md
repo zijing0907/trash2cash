@@ -25,7 +25,7 @@ serve the web app and proxy `/api` here (no CORS needed).
 |---|---|---|
 | `POST /api/auth/register` | anyone | Create a resident account and log in (`email`, `password` ≥ 8 chars, `display_name`) |
 | `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` | | Session in an httpOnly cookie |
-| `POST /api/scans` | anyone (guests too) | Form: `file`, `zoom`, `donate`. Returns the stored scan plus `class_index`, `threshold`, `crop_box` |
+| `POST /api/scans` | anyone (guests too) | Form: `file`, `zoom`, `donate`. Returns the stored scan (with the bin-level answer `top_bin`, `bin_confidence`, `bin_unsure`) plus `class_index`, `threshold`, `crop_box`, `battery_chance`, `battery_warning` |
 | `POST /api/explain` | anyone | Form: `file`, `class_index`, `zoom`. Grad-CAM PNG |
 | `PUT /api/scans/{id}/label` | the scan's owner | `{"label": "<class>" or "other"}`: what the item really is |
 | `DELETE /api/scans/{id}/photo` | the scan's owner | Deletes a donated photo (withdraw consent) |
