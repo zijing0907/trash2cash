@@ -243,10 +243,10 @@ class WasteClassifier:
         probs = predict(self.model, arr, tta)
         k = int(np.argmax(probs))
         top3 = [int(i) for i in np.argsort(probs)[::-1][:3]]
-        # notebook 02 (app_predict): a zoomed answer is never "not sure", because zoom only wins when the
-        # model is more confident about the crop. Its confidence is a max over ~20 crops, so it is not
-        # calibrated against the threshold; the response says zoomed=True so the UI can show that.
-        unsure = bool(probs[k] < self.threshold) and not zoomed
+        # "Not sure" uses the same threshold with or without zoom search (decided in Milestone 2, see
+        # docs/decisions.md). Notebook 02 never marked a zoomed answer unsure; but a zoomed confidence is the
+        # best of ~20 crops and biased upwards, so if even that is below the threshold the model is not sure.
+        unsure = bool(probs[k] < self.threshold)
         log.info("predict %s: %s (%.2f)%s", self.version, verdict(probs, self.class_names, self.threshold),
                  probs[k], " zoomed" if zoomed else "")  # fmt: skip
         return {

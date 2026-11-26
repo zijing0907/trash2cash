@@ -1,0 +1,10 @@
+{
+  "name": "Trash2Cash",
+  "short_name": "Trash2Cash",
+  "description": "Which recycling bin does it go in? Snap a photo and find out.",
+  "start_url": "/scan",
+  "display": "standalone",
+  "background_color": "#f7f4ec",
+  "theme_color": "#23733e",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

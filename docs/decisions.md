@@ -59,10 +59,10 @@ One entry per milestone: what was chosen, the alternatives, and why.
   `unsure_below_robust`, chosen on validation data in the notebooks). Zoom search is off by default.
   When it is on and wins, the notebook's rule is kept (a zoomed answer is never "not sure"), and the
   response says `zoomed: true`.
-- **Open question:** the zoomed confidence is the best of about 20 crops, so it is biased upwards and
-  not calibrated. In a test the plain answer was 0.39 ("not sure") and zoom found a crop at 0.40, so
-  the answer stopped being "not sure" although 0.40 is still below the 0.5 threshold. A stricter rule
-  would be "zoomed and below the threshold is still not sure". To be decided with the scan UI in Milestone 2.
+- **Open question (resolved in Milestone 2, decision 2.6):** the zoomed confidence is the best of about
+  20 crops, so it is biased upwards and not calibrated. In a test the plain answer was 0.39 ("not sure")
+  and zoom found a crop at 0.40, so the answer stopped being "not sure" although 0.40 is still below the
+  0.5 threshold.
 
 ### 7. `/explain` repeats the preprocessing instead of taking a crop box
 - **Chose:** the client sends the same photo and the same `zoom` value as for `/predict`, and the service
@@ -133,3 +133,108 @@ One entry per milestone: what was chosen, the alternatives, and why.
 - **Note:** it has no login or CORS settings, because only the main API calls it. If Milestone 4 hosts it
   on a public URL (for example Hugging Face Spaces), add a shared secret header that the API sends, so
   strangers cannot use it.
+
+## Milestone 2 — main API and web app (23 Nov 2026)
+
+### 2.1 The web app talks only to the main API, on the same origin
+- **Chose:** everything the browser calls is under `/api`. In Docker, nginx serves the built web app and
+  proxies `/api` to the API; in development, Vite proxies `/api` the same way. ml-service is reachable
+  only from the API.
+- **Alternatives:** the browser calls ml-service directly for scans; the API on its own domain with CORS.
+- **Why:** one origin means a first-party session cookie and no CORS rules to get wrong. The API can
+  store every scan, apply the rate limit and the upload limit before the expensive model runs, and the
+  model service stays internal (decision 15).
+
+### 2.2 Stack: FastAPI + SQLAlchemy 2 + Alembic + PostgreSQL; React + Vite + TypeScript + Tailwind
+- **API:** sync SQLAlchemy sessions in sync endpoints (FastAPI runs them in a thread pool), so a database
+  or ml-service call never blocks the event loop, without the extra complexity of async drivers.
+  `httpx2` (what FastAPI's test client uses) calls ml-service.
+- **Web:** React 19, React Router, TanStack Query for server state (caching, retries, loading and error
+  states), Tailwind 4 with the Malaysian bin colours as design tokens, lucide icons, self-hosted fonts
+  (no requests to Google Fonts). TypeScript 6.0, not 7.0: typescript-eslint does not support 7 yet.
+
+### 2.3 Accounts and sessions
+- **Chose:** e-mail + password, hashed with Argon2id. The session is a signed JWT in an **httpOnly,
+  SameSite=Lax** cookie (`Secure` when `COOKIE_SECURE=true`, i.e. behind HTTPS). Sign-up always creates a
+  `resident`; `operator` and `admin` exist as roles for Milestones 3–4 and can only be given by an admin.
+- **Alternatives:** a token in `localStorage` sent as a Bearer header; server-side sessions in a table.
+- **Why:** page scripts cannot read an httpOnly cookie, so an XSS bug cannot steal the session.
+  SameSite=Lax stops other sites' forms from sending it with POSTs, which covers CSRF for this app (all
+  state-changing requests are POST/PUT/DELETE, and there is no CORS). A JWT needs no session table.
+  **Trade-off:** a JWT cannot be revoked before it expires (7 days); logout deletes the cookie. If
+  Milestone 3 adds anything valuable to steal (points that convert to money), add a `token_version`
+  column to revoke all sessions of a user.
+- Login with an unknown e-mail still runs one Argon2 check, so the response time does not reveal which
+  e-mails have accounts. Wrong password and unknown e-mail give the same message.
+- `GET /api/auth/me` answers `null` (HTTP 200) for guests instead of 401: being a guest is normal, and
+  the web app asks on every page load, so a 401 would put an error in the console of every visitor.
+
+### 2.4 Guests can scan; scans are stored, photos are not
+- **Chose:** scanning needs no account. Every scan stores the model's answer, the model version and a
+  64-bit difference hash, but **not the photo**, unless the user ticks "donate this photo" for that
+  photo. Donated photos can be deleted again (`DELETE /api/scans/{id}/photo`). The consent switch resets
+  for every new photo.
+- **Why:** trying it without signing up is the best demo, and stored answers (with `model_version`)
+  show how the model does in real use: how often it is unsure, which classes users correct. Photos of
+  people's homes are personal data (Malaysia's PDPA 2010), so they are kept only with explicit consent
+  and with a way to withdraw it. The browser re-sends the photo for the Grad-CAM view instead of the API
+  keeping it.
+- A guest's scan can be labelled by whoever holds its id, a random UUID returned only to the browser
+  that scanned. A logged-in user's scans can be changed only by that user (others get 404, not 403, so
+  ids of other people's scans cannot be confirmed).
+
+### 2.5 Labels: confirm, correct or "something else"
+- **Chose:** `PUT /api/scans/{id}/label` with one of the model's class names or `other`. The scan
+  screen asks "Did we get it right?" for a confident answer, and "Which one is it?" (top 3, then all
+  classes, then "something else") for an unsure one. The bin shown is then the bin of the user's label,
+  without the model's confidence.
+- **Why:** corrected labels plus donated photos are exactly the data the next training round needs,
+  each linked to the model version that made the mistake. `other` records items outside the 12 classes
+  (styrofoam, drink cartons), which tells us which class to add next.
+
+### 2.6 "Not sure" with zoom search: the stricter rule
+- **Chose:** `unsure = confidence < threshold`, also when zoom search picked the crop (changed in
+  `ml-service/app/model.py`; notebook 02 never marked a zoomed answer as unsure).
+- **Why:** the threshold is the lowest confidence at which the model was right at least 90% of the time
+  on validation data, and the UI promises "below this, we ask you". A zoomed confidence is the maximum
+  over about 20 crops, so it is biased upwards; if even that maximum is below the threshold, the model
+  really is not sure. The UI also tells the user that a zoomed percentage is optimistic.
+
+### 2.7 Errors, limits and abuse
+- Every error is `{code, message}`, as in ml-service. ml-service's own 4xx/504 errors are passed on
+  unchanged; when it is down or crashes the API answers 503 `ml_unavailable` and never forwards its
+  internals. Validation errors use the same shape with the field name.
+- Uploads above 8 MB are refused from `Content-Length` before the body is read, and again while
+  reading, so they never reach the model. The web app checks size and type before uploading.
+- Scans and heat maps are limited per client IP (`SCAN_RATE_PER_MIN`, default 20), because each one
+  runs the CNN on a CPU. The limiter is in memory, which is right for one API process; several processes
+  would need Redis. Behind nginx the client IP comes from `X-Forwarded-For` (`TRUST_PROXY=true`, set only
+  in docker compose, where the API is not exposed directly).
+
+### 2.8 Security headers and caching (nginx)
+- A strict Content-Security-Policy (`default-src 'self'`, images also from `blob:` for photo previews,
+  `frame-ancestors 'none'`), `nosniff`, a referrer policy and a permissions policy that allows the
+  camera only for this site. Hashed files under `/assets` are cached for a year; `index.html` is never
+  cached, so a new deployment is picked up at once. The API docs (`/api/docs`) are excluded from the CSP
+  because Swagger UI loads from a CDN.
+
+### 2.9 Tests
+- **API:** pytest with ml-service replaced by an `httpx` MockTransport, so each test can make the model
+  answer, fail or time out. They run on in-memory SQLite by default and on PostgreSQL when
+  `TEST_DATABASE_URL` is set; CI does both, and also checks that the migrations apply, roll back and
+  match the models (`alembic check`).
+- **Web:** Vitest + Testing Library for the scan flow (confident, unsure, corrected, "something else",
+  error), the upload checks, the API client's error handling, consent reset and the crop-box maths.
+- **End to end (by hand, not in CI yet):** the full Docker stack was run with a stand-in model (random
+  weights, flagged `quick_run` so the model page warns that its numbers mean nothing) and driven with
+  Playwright on desktop and phone sizes: scan, heat map, correction, sign-up, donation, history, guide,
+  model page, with no console errors under the CSP. Moving this into CI needs a stand-in model export
+  that CI can build; planned for Milestone 4.
+
+### 2.10 Honest content
+- The landing page cites its numbers (national recycling rate 35.4% in 2023 per SWCorp; 40% target
+  for 2025) and marks "drop off & earn" as in development. The hackathon deck's "40% of collections are
+  premature" and "recycling below 30%" are not used: the first has no source we could find, the second
+  is out of date.
+- The model page shows only what the served model's `meta.json` says, and labels test-set metrics as
+  such: real phone photos are harder.

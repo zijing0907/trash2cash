@@ -1,0 +1,11 @@
+# Runtime dependencies of the main API (pinned for repeatable builds)
+fastapi==0.165.0
+uvicorn==0.54.0
+python-multipart==0.0.34   # file uploads (multipart/form-data)
+sqlalchemy==2.1.9
+alembic==1.20.1
+psycopg[binary]==3.3.9     # PostgreSQL driver
+argon2-cffi==25.1.0        # password hashing (Argon2id)
+pyjwt==2.15.1              # signed session cookie
+httpx2==2.16.2             # HTTP client for calling ml-service (also what FastAPI's TestClient uses)
+email-validator==2.4.0     # validates e-mail addresses in sign-up
