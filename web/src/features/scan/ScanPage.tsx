@@ -6,8 +6,10 @@ import { PhotoWithBox } from "../../components/PhotoWithBox";
 import { Button, ErrorNote } from "../../components/ui";
 import { api } from "../../lib/api";
 import { useMe } from "../../lib/hooks";
+import { withViewTransition } from "../../lib/motion";
 import { shrinkPhoto } from "../../lib/photo";
 import type { ScanResult } from "../../lib/types";
+import { FirstScanGuide } from "./FirstScanGuide";
 import { PhotoPicker } from "./PhotoPicker";
 import { ScanResultView } from "./ScanResultView";
 
@@ -36,7 +38,8 @@ export function ScanPage() {
     mutationFn: async (v: { file: File; zoom: boolean; donate: boolean }) =>
       api.scan(await (upload.current ?? v.file), v),
     onSuccess: (scanResult, v) => {
-      setResult({ scan: scanResult, zoom: v.zoom });
+      // The photo glides from the preview into its place on the result, rather than the page swapping under it
+      withViewTransition(() => setResult({ scan: scanResult, zoom: v.zoom }));
       void qc.invalidateQueries({ queryKey: ["scans"] });
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
@@ -69,12 +72,14 @@ export function ScanPage() {
         <h1>{result ? "Here's where it goes" : "Which bin does it go in?"}</h1>
       </header>
 
+      {!photo && <FirstScanGuide />}
       {!photo && <PhotoPicker onPick={pick} />}
 
       {photo && !result && (
         <div className="scan-grid">
           <PhotoWithBox
             src={photo.url}
+            morph="scan-photo"
             label={scan.isPending ? (zoom ? "Searching the photo" : "Reading the square") : "What the model will see"}
             scanning={scan.isPending ? (zoom ? "photo" : "box") : undefined}
           />

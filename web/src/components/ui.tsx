@@ -1,5 +1,5 @@
 import { clsx } from "clsx";
-import { CircleAlert, LoaderCircle } from "lucide-react";
+import { CircleAlert, LoaderCircle, RotateCw } from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Link, type LinkProps } from "react-router";
 
@@ -39,7 +39,7 @@ export function Button({
 }
 
 export function ButtonLink({ variant = "primary", small, className, ...rest }: Common & LinkProps) {
-  return <Link className={classes(variant, small, className)} {...rest} />;
+  return <Link className={classes(variant, small, className)} viewTransition {...rest} />;
 }
 
 export function Spinner({ label }: { label: string }) {
@@ -51,12 +51,26 @@ export function Spinner({ label }: { label: string }) {
   );
 }
 
-export function ErrorNote({ children, action }: { children: ReactNode; action?: ReactNode }) {
+/** Something went wrong, said plainly. `onRetry` adds "Try again" (for anything that failed to load). */
+export function ErrorNote({
+  children,
+  action,
+  onRetry,
+}: {
+  children: ReactNode;
+  action?: ReactNode;
+  onRetry?: () => void;
+}) {
   return (
     <div role="alert" className="notice">
       <CircleAlert size={16} aria-hidden />
       <div>{children}</div>
       {action}
+      {onRetry && (
+        <Button small variant="secondary" className="notice__retry" onClick={onRetry}>
+          <RotateCw size={14} aria-hidden /> Try again
+        </Button>
+      )}
     </div>
   );
 }

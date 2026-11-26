@@ -218,6 +218,10 @@ figcaption {
 }
 .field > span {
   color: var(--color-ink);
+  /* the same face as a <label>, also for fields whose heading is not one (a map, a photo) */
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-variation-settings: "opsz" 12;
   font-size: var(--text-sm);
 }
 .input {
@@ -388,8 +392,9 @@ figcaption {
   text-decoration-color: var(--color-rule-2);
 }
 .navlink[aria-current="page"] {
+  position: relative;
   color: var(--color-ink);
-  text-decoration-color: var(--color-accent);
+  /* the green mark is a separate element (.navmark, motion.css) so it can slide between links */
 }
 .navlink:active {
   color: var(--color-ink-2);
@@ -403,6 +408,14 @@ figcaption {
 }
 .account__name {
   color: var(--color-muted);
+  text-decoration: none;
+}
+.account__name:hover b,
+.account__name[aria-current="page"] b {
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.3em;
 }
 .account__name b {
   color: var(--color-ink);
@@ -444,9 +457,11 @@ figcaption {
   text-decoration: none;
   white-space: nowrap;
 }
+.tab {
+  position: relative;
+}
 .tab[aria-current="page"] {
   color: var(--color-ink);
-  box-shadow: inset 0 3px 0 var(--color-accent);
 }
 .tab--scan {
   background: var(--color-ink);
@@ -861,7 +876,11 @@ figcaption {
 }
 .figures a {
   color: var(--color-paper);
-  text-decoration-color: var(--color-muted);
+  /* underlined, so the source reads as a link without relying on colour */
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  text-decoration-color: color-mix(in oklab, var(--color-paper) 55%, transparent);
 }
 .figures a:hover {
   text-decoration-color: var(--color-accent-ink);
@@ -1149,20 +1168,11 @@ figcaption {
   .answer {
     animation: settle var(--dur-long) var(--ease-out) both;
   }
-  .answer h2 {
-    animation: settle-name var(--dur-long) var(--ease-out) 90ms both;
-  }
 }
 @keyframes settle {
   from {
     opacity: 0;
     translate: 0 -14px;
-  }
-}
-@keyframes settle-name {
-  from {
-    opacity: 0;
-    translate: 0 10px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2791,5 +2801,134 @@ figcaption {
   }
   .week__plot {
     height: 140px;
+  }
+}
+
+/* Offline (Phase 8b): a plain line under the masthead while the browser is offline */
+.offline {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xs) var(--space-md);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+#main h1:focus {
+  outline: none; /* focus is moved here for screen readers after a page change; it is not a control */
+}
+.notice__retry {
+  margin-left: auto;
+  align-self: center;
+}
+/* Weigh-in (Phase 8b): weights big enough to read at arm's length and type without looking twice */
+.input--weight {
+  min-height: 52px;
+  font: 600 var(--text-xl) / 1 var(--font-display);
+  font-variant-numeric: lining-nums tabular-nums;
+  text-align: right;
+}
+.kbd-hint {
+  grid-column: 1 / -1;
+}
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 var(--space-2xs);
+  border: var(--rule-hair) solid var(--color-rule-2);
+  border-bottom-width: 2px;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: 500 var(--text-xs) / 1.6 var(--font-display);
+  text-align: center;
+}
+@media (max-width: 60rem) {
+  .kbd-hint {
+    display: none; /* phones have no keyboard shortcuts */
+  }
+}
+/* Long forms on phones (Phase 8b): the main button stays in reach above the tab bar */
+@media (max-width: 60rem) {
+  .actions--sticky {
+    position: sticky;
+    bottom: calc(60px + env(safe-area-inset-bottom));
+    z-index: 5;
+    margin-inline: calc(-1 * var(--space-md));
+    padding: var(--space-sm) var(--space-md);
+    border-top: var(--rule-hair) solid var(--color-rule-2);
+    background: var(--color-paper);
+  }
+}
+/* First visit to Scan (Phase 8b): the three steps, once */
+.firsttime {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-md);
+  align-items: center;
+  margin-bottom: var(--space-xl);
+  padding-block: var(--space-md);
+  border-block: var(--rule-hair) solid var(--color-rule-2);
+}
+.firsttime ol {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-lg);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.firsttime li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-sm);
+  align-items: baseline;
+}
+.firsttime li > span:last-child {
+  display: grid;
+  gap: var(--space-3xs);
+}
+.firsttime__n {
+  font-size: var(--text-2xl);
+  line-height: 1;
+}
+@media (max-width: 60rem) {
+  .firsttime,
+  .firsttime ol {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .firsttime {
+    gap: var(--space-sm);
+  }
+  .firsttime ol {
+    gap: var(--space-sm);
+  }
+}
+/* Home, "After the bin" (Phase 8b): four ruled rows, each a way in */
+.after {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 var(--gap-columns);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: var(--rule-heavy) solid var(--color-ink);
+}
+.after li {
+  display: grid;
+  gap: var(--space-xs);
+  padding-block: var(--space-lg);
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+}
+.after h3 {
+  font-size: var(--text-title);
+}
+.after p {
+  color: var(--color-ink-2);
+}
+@media (max-width: 60rem) {
+  .after {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

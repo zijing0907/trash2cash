@@ -130,6 +130,7 @@ export const api = {
   offerJobs: (pointIds: number[]) => request<Job[]>("/admin/jobs", json("POST", { point_ids: pointIds })),
   adminJobs: () => request<Job[]>("/admin/jobs"),
   cancelJob: (id: number) => request<Job>(`/admin/jobs/${id}/cancel`, { method: "POST" }),
+  reopenJob: (id: number) => request<Job>(`/admin/jobs/${id}/reopen`, { method: "POST" }),
   staff: (q: string) => request<Staff[]>(`/admin/staff?q=${encodeURIComponent(q)}`),
   setRole: (userId: number, body: { role: string; drop_point_id: number | null }) =>
     request<Staff>(`/admin/users/${userId}/role`, json("PUT", body)),
@@ -187,6 +188,7 @@ export const homeApi = {
   },
   mine: () => request<HomePickup[]>("/home-pickups/mine"),
   cancel: (id: number) => request<HomePickup>(`/home-pickups/${id}/cancel`, { method: "POST" }),
+  restore: (id: number) => request<HomePickup>(`/home-pickups/${id}/restore`, { method: "POST" }),
   forCollector: () => request<CollectorHomePickups>("/collector/home-pickups"),
   take: (id: number) => request<HomePickup>(`/collector/home-pickups/${id}/take`, { method: "POST" }),
   release: (id: number) => request<HomePickup>(`/collector/home-pickups/${id}/release`, { method: "POST" }),

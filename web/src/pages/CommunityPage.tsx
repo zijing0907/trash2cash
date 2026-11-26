@@ -3,7 +3,9 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import { BinBadge } from "../components/BinBadge";
-import { ErrorNote, Spinner } from "../components/ui";
+import { CountUp } from "../components/CountUp";
+import { Skeleton } from "../components/Skeleton";
+import { ErrorNote } from "../components/ui";
 import { api } from "../lib/api";
 import { useModelInfo } from "../lib/hooks";
 import { day, kgNum } from "../lib/format";
@@ -24,8 +26,8 @@ export function CommunityPage() {
           Everything staff weighed at drop-off points and home pickups. Totals by place and by bin, never by person.
         </p>
       </header>
-      {page.isPending && <Spinner label="Adding it all up…" />}
-      {page.error && <ErrorNote>{page.error.message}</ErrorNote>}
+      {page.isPending && <Skeleton label="Adding it all up…" variant="block" />}
+      {page.error && <ErrorNote onRetry={() => void page.refetch()}>{page.error.message}</ErrorNote>}
       {page.data && (
         <>
           {page.data.is_demo && (
@@ -53,15 +55,21 @@ function ThisMonth({ c }: { c: Community }) {
         <dl className="figures-row">
           <div>
             <dt>Weighed in</dt>
-            <dd className="figure-num">{kgNum(m.kg_total)}</dd>
+            <dd className="figure-num">
+              <CountUp to={m.kg_total} format={kgNum} />
+            </dd>
           </div>
           <div>
             <dt>Drop-offs</dt>
-            <dd className="figure-num">{m.deposits.toLocaleString("en-MY")}</dd>
+            <dd className="figure-num">
+              <CountUp to={m.deposits} />
+            </dd>
           </div>
           <div>
             <dt>Residents taking part</dt>
-            <dd className="figure-num">{m.residents.toLocaleString("en-MY")}</dd>
+            <dd className="figure-num">
+              <CountUp to={m.residents} />
+            </dd>
           </div>
         </dl>
       )}
@@ -77,11 +85,17 @@ function Weeks({ c }: { c: Community }) {
     <section className="account__section" aria-labelledby="weeks-head">
       <h2 id="weeks-head">Weighed in, week by week</h2>
       <ol className="weeks" aria-label="Kilograms weighed in each week, oldest first">
-        {c.weeks.map((w) => {
+        {c.weeks.map((w, i) => {
           const label = `Week of ${weekOf(w.from)}${w.partial ? " so far" : ""}: ${kgNum(w.kg)}`;
           const shown = w === peak || w.partial; // the high point and the latest week carry their number
           return (
-            <li key={w.from} className={w.partial ? "week is-partial" : "week"} tabIndex={0} aria-label={label}>
+            <li
+              key={w.from}
+              className={w.partial ? "week is-partial" : "week"}
+              tabIndex={0}
+              aria-label={label}
+              style={{ "--i": i } as React.CSSProperties}
+            >
               <span className="week__plot" aria-hidden>
                 {shown && <span className="week__value">{kgNum(w.kg)}</span>}
                 <span className="week__bar" style={{ height: `${(w.kg / max) * 85}%` }} />
@@ -150,13 +164,13 @@ function Places({ c }: { c: Community }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {rows.map((r, ri) => (
                 <tr key={r.key}>
                   <td className="table__main">{r.name}</td>
                   <td>
                     <div className="hbar">
                       <span className="hbar__track" aria-hidden>
-                        <span className="hbar__bar" style={{ width: `${(r.now / max) * 100}%` }} />
+                        <span className="hbar__bar" style={{ width: `${(r.now / max) * 100}%`, "--i": ri } as React.CSSProperties} />
                       </span>
                       <span className="figure-num">{kgNum(r.now)}</span>
                     </div>
@@ -181,7 +195,7 @@ function Bins({ c }: { c: Community }) {
       <div className="table-wrap">
         <table className="table">
           <tbody>
-            {c.streams.map((s) => (
+            {c.streams.map((s, si) => (
               <tr key={s.stream_key}>
                 <td>
                   <BinBadge bin={s.stream_key} />
@@ -192,7 +206,7 @@ function Bins({ c }: { c: Community }) {
                     <span className="hbar__track" aria-hidden>
                       <span
                         className={`hbar__bar hbar__bar--bin ${binInfo(s.stream_key).cls}`}
-                        style={{ width: `${(s.kg_month / max) * 100}%` }}
+                        style={{ width: `${(s.kg_month / max) * 100}%`, "--i": si } as React.CSSProperties}
                       />
                     </span>
                     <span className="figure-num">{kgNum(s.kg_month)}</span>
@@ -235,8 +249,8 @@ function Confusing() {
         From the last 90 days of scans by signed-in residents. Scans carry no location, so a place here means the
         residents whose drop-offs were mostly weighed there. An item shows once at least 3 different people are in it.
       </p>
-      {data.isPending && <Spinner label="Looking through the scans…" />}
-      {data.error && <ErrorNote>{data.error.message}</ErrorNote>}
+      {data.isPending && <Skeleton label="Looking through the scans…" />}
+      {data.error && <ErrorNote onRetry={() => void data.refetch()}>{data.error.message}</ErrorNote>}
       {data.data && <ConfusionTables c={data.data} />}
     </section>
   );

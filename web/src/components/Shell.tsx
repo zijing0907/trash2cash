@@ -1,8 +1,22 @@
-import { BookOpen, Brain, Gift, History, House, LayoutGrid, LogOut, MapPinned, Scale, ScanLine, Truck, Users } from "lucide-react";
+import {
+  BookOpen,
+  Gift,
+  History,
+  LayoutGrid,
+  LogOut,
+  MapPinned,
+  Scale,
+  ScanLine,
+  Truck,
+  Users,
+  WifiOff,
+} from "lucide-react";
 import { NavLink, Outlet, ScrollRestoration, useNavigate } from "react-router";
 
 import { useLogout, useMe } from "../lib/hooks";
+import { useOnline, usePageChange } from "../lib/page";
 import { Logo } from "./Logo";
+import { ToastProvider } from "./Toast";
 import { ButtonLink } from "./ui";
 
 import type { Role } from "../lib/types";
@@ -10,33 +24,32 @@ import type { Role } from "../lib/types";
 const LINKS = {
   scan: { to: "/scan", label: "Scan", short: "Scan", icon: ScanLine },
   guide: { to: "/guide", label: "Bin guide", short: "Guide", icon: BookOpen },
-  model: { to: "/model", label: "The model", short: "Model", icon: Brain },
   rewards: { to: "/rewards", label: "Rewards", short: "Rewards", icon: Gift },
   weigh: { to: "/operator", label: "Weigh-in", short: "Weigh-in", icon: Scale },
   board: { to: "/admin", label: "Board", short: "Board", icon: LayoutGrid },
   me: { to: "/me", label: "My account", short: "Me", icon: History },
-  home: { to: "/", label: "Home", short: "Home", icon: House },
   map: { to: "/map", label: "Map", short: "Map", icon: MapPinned },
   jobs: { to: "/collect", label: "Jobs", short: "Jobs", icon: Truck },
   community: { to: "/community", label: "Community", short: "Community", icon: Users },
 };
 
-/** Top links by role: staff get their screens; everyone keeps scanning and their account. */
+/** Top links by role, at most five: each role's own screen first. The account is the name at the right,
+ * "The model" lives in the footer and on the home page. */
 function navFor(role: Role | undefined) {
-  const { scan, map, guide, model, rewards, weigh, board, jobs, community, me } = LINKS;
-  if (role === "admin") return [scan, map, community, weigh, board, me];
-  if (role === "operator") return [scan, map, guide, rewards, weigh, me];
-  if (role === "collector") return [jobs, map, scan, guide, me];
-  return [scan, map, guide, community, model, rewards, me];
+  const { scan, map, guide, rewards, weigh, board, jobs, community } = LINKS;
+  if (role === "admin") return [board, weigh, map, community, scan];
+  if (role === "operator") return [weigh, scan, map, rewards, guide];
+  if (role === "collector") return [jobs, map, scan, guide];
+  return [scan, map, guide, rewards, community];
 }
 
-/** The phone's five tabs */
+/** The phone's five tabs, with Scan in the middle under the thumb (Home is the wordmark at the top) */
 function tabsFor(role: Role | undefined) {
-  const { home, scan, map, guide, rewards, weigh, board, jobs, me } = LINKS;
-  if (role === "admin") return [home, scan, weigh, board, me];
-  if (role === "operator") return [home, scan, weigh, map, me];
-  if (role === "collector") return [home, jobs, map, scan, me];
-  return [scan, map, guide, rewards, me];
+  const { scan, map, guide, rewards, weigh, board, jobs, me } = LINKS;
+  if (role === "admin") return [board, weigh, scan, map, me];
+  if (role === "operator") return [weigh, map, scan, rewards, me];
+  if (role === "collector") return [jobs, map, scan, guide, me];
+  return [map, guide, scan, rewards, me];
 }
 
 function AccountArea() {
@@ -58,9 +71,9 @@ function AccountArea() {
   }
   return (
     <div className="account">
-      <span className="account__name">
+      <NavLink to="/me" className="account__name" viewTransition title="My account">
         Hi, <b>{me.display_name}</b>
-      </span>
+      </NavLink>
       <button
         type="button"
         onClick={() => logout.mutate(undefined, { onSuccess: () => navigate("/") })}
@@ -77,8 +90,10 @@ function AccountArea() {
 export function Shell() {
   const { data: me } = useMe();
   const role = me?.role;
+  const online = useOnline();
+  usePageChange();
   return (
-    <>
+    <ToastProvider>
       <a className="skip" href="#main">
         Skip to content
       </a>
@@ -87,14 +102,26 @@ export function Shell() {
           <Logo />
           <nav className="masthead__nav" aria-label="Main">
             {navFor(role).map((n) => (
-              <NavLink key={n.to} to={n.to} className="navlink">
-                {n.label}
+              <NavLink key={n.to} to={n.to} className="navlink" viewTransition>
+                {({ isActive }) => (
+                  <>
+                    {n.label}
+                    {isActive && <span className="navmark" aria-hidden />}
+                  </>
+                )}
               </NavLink>
             ))}
           </nav>
           <AccountArea />
         </div>
       </header>
+
+      {!online && (
+        <p className="offline" role="status">
+          <WifiOff size={16} aria-hidden /> You are offline. What you see may be out of date, and changes will not save
+          until you are back.
+        </p>
+      )}
 
       <main id="main" className="site-main">
         <Outlet />
@@ -123,15 +150,26 @@ export function Shell() {
           {tabsFor(role).map((n) => {
             const Icon = n.icon;
             return (
-              <NavLink key={n.to} to={n.to} end={n.to === "/"} className={n.to === "/scan" ? "tab tab--scan" : "tab"}>
-                <Icon size={20} aria-hidden />
-                {n.short}
+              <NavLink
+                key={n.to}
+                to={n.to}
+                end={n.to === "/"}
+                className={n.to === "/scan" ? "tab tab--scan" : "tab"}
+                viewTransition
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive && n.to !== "/scan" && <span className="tabmark" aria-hidden />}
+                    <Icon size={20} aria-hidden />
+                    {n.short}
+                  </>
+                )}
               </NavLink>
             );
           })}
         </div>
       </nav>
       <ScrollRestoration />
-    </>
+    </ToastProvider>
   );
 }

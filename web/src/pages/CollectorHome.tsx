@@ -3,23 +3,48 @@ import { House } from "lucide-react";
 import { useState } from "react";
 
 import { BinBadge } from "../components/BinBadge";
-import { Button, ErrorNote, Spinner } from "../components/ui";
+import { Skeleton } from "../components/Skeleton";
+import { Button, ErrorNote } from "../components/ui";
 import { ApiError, homeApi, homePhotoUrl } from "../lib/api";
 import { day as showDay, kg, km, pts } from "../lib/format";
 import { distanceKm, type LatLng } from "../lib/geo";
 import { SLOTS } from "../lib/home";
+import { useToast } from "../lib/toast";
 import { binInfo } from "../lib/recycling";
 import type { HomePickup } from "../lib/types";
 
-function useHomeAction<T>(fn: (v: T) => Promise<HomePickup>) {
+function useHomeAction<T>(
+  fn: (v: T) => Promise<HomePickup>,
+  done?: (p: HomePickup) => string,
+  undo?: (p: HomePickup) => Promise<unknown>,
+) {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: fn, onSettled: () => qc.invalidateQueries({ queryKey: ["collector", "home"] }) });
+  const toast = useToast();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: (p) => {
+      if (!done) return;
+      const action = undo && {
+        label: "Undo",
+        run: () =>
+          undo(p).then(
+            () => qc.invalidateQueries({ queryKey: ["collector", "home"] }),
+            (e: Error) => toast(e.message),
+          ),
+      };
+      toast(done(p), action ? { action } : undefined);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["collector", "home"] }),
+  });
 }
 
 /** Home pickups on the collector's screen: the ones they took, in full, and the ones waiting, by area only. */
 export function CollectorHome({ me }: { me: LatLng | null }) {
   const list = useQuery({ queryKey: ["collector", "home"], queryFn: homeApi.forCollector, refetchInterval: 30_000 });
-  const take = useHomeAction((id: number) => homeApi.take(id));
+  const take = useHomeAction(
+    (id: number) => homeApi.take(id),
+    (p) => `Home pickup taken: ${p.address ?? "the address is now shown"}`,
+  );
   // An API from before home pickups has no such route: leave the section out rather than show an error
   if (list.error instanceof ApiError && list.error.status === 404) return null;
   return (
@@ -28,8 +53,8 @@ export function CollectorHome({ me }: { me: LatLng | null }) {
       <p className="small-print muted">
         Residents with 5 kg or more book a pickup. You see the address once you take one; until then, only the area.
       </p>
-      {list.isPending && <Spinner label="Loading home pickups…" />}
-      {list.error && <ErrorNote>{list.error.message}</ErrorNote>}
+      {list.isPending && <Skeleton label="Loading home pickups…" lines={3} />}
+      {list.error && <ErrorNote onRetry={() => void list.refetch()}>{list.error.message}</ErrorNote>}
       {list.data && (
         <>
           {list.data.mine.length > 0 && (
@@ -115,9 +140,19 @@ function MyHomePickup({ p }: { p: HomePickup }) {
   const [missing, setMissing] = useState(false);
   const [reason, setReason] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
-  const collect = useHomeAction((lines: { stream_key: string; weight_kg: number }[]) => homeApi.collect(p.id, lines));
-  const missed = useHomeAction((why: string) => homeApi.missed(p.id, why));
-  const release = useHomeAction(() => homeApi.release(p.id));
+  const collect = useHomeAction(
+    (lines: { stream_key: string; weight_kg: number }[]) => homeApi.collect(p.id, lines),
+    (done) => `Collected. ${done.resident?.name ?? "They"} got ${done.points ?? 0} points`,
+  );
+  const missed = useHomeAction(
+    (why: string) => homeApi.missed(p.id, why),
+    () => "Marked as missed",
+  );
+  const release = useHomeAction(
+    () => homeApi.release(p.id),
+    () => "Handed back for another collector",
+    (back) => homeApi.take(back.id),
+  );
 
   function submit(e: React.FormEvent) {
     e.preventDefault();

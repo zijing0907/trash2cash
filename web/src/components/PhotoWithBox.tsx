@@ -15,11 +15,14 @@ export function PhotoWithBox({
   box,
   label,
   scanning,
+  morph,
 }: {
   src: string;
   box?: Box;
   label?: string;
   scanning?: "box" | "photo";
+  /** Name for a view transition, so the same photo glides between two screens */
+  morph?: string;
 }) {
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [failed, setFailed] = useState(false);
@@ -36,7 +39,7 @@ export function PhotoWithBox({
   const shown = size ? (box ?? centreBox(size.w, size.h)) : null;
   return (
     // The inner frame is exactly as big as the shown image, so the box percentages line up with it
-    <div className="photo">
+    <div className="photo" style={morph ? { viewTransitionName: morph } : undefined}>
       <div className="photo__frame">
         <img
           src={src}

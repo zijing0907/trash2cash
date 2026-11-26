@@ -133,6 +133,30 @@ def cancel(db: Session, req: HomePickup, resident: User) -> None:
         raise api_error(409, "already_taken", "A collector has already taken this pickup. Contact them or an admin.")
 
 
+UNDO_MINUTES = 10  # how long a cancelled pickup or a withdrawn job can be brought back with Undo
+
+
+def restore(db: Session, req: HomePickup, resident: User) -> None:
+    """Undo a cancellation, shortly after it, if the resident still has room for another open pickup."""
+    if req.resident_id != resident.id:
+        raise api_error(404, "pickup_not_found", "Pickup not found.")
+    finished = (
+        req.finished_at if req.finished_at is None or req.finished_at.tzinfo else req.finished_at.replace(tzinfo=UTC)
+    )
+    if (
+        req.status != HomeStatus.cancelled
+        or finished is None
+        or datetime.now(UTC) - finished > timedelta(minutes=UNDO_MINUTES)
+    ):
+        raise api_error(409, "cannot_restore", "This pickup can no longer be brought back. Book it again instead.")
+    waiting = db.scalar(
+        select(func.count(HomePickup.id)).where(HomePickup.resident_id == resident.id, HomePickup.status.in_(OPEN))
+    )
+    if waiting >= OPEN_PER_RESIDENT:
+        raise api_error(409, "too_many_open", "You already have two pickups booked.")
+    req.status, req.finished_at = HomeStatus.requested, None
+
+
 def take(db: Session, request_id: int, collector: User) -> None:
     req = load(db, request_id)
     if req.resident_id == collector.id:

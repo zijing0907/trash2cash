@@ -131,3 +131,23 @@ def test_a_taken_pickup_cannot_be_cancelled_and_others_cannot_touch_it(client, b
     login(client, "op@example.com")
     assert client.get("/api/collector/home-pickups").status_code == 403
     assert client.get(f"/api/home-pickups/{booked['id']}/photo").status_code == 404
+
+
+def test_a_cancelled_pickup_can_be_brought_back_shortly_after(client, booked):
+    from datetime import UTC, datetime, timedelta
+
+    from app.models import HomePickup
+
+    client.post(f"/api/home-pickups/{booked['id']}/cancel")
+    back = client.post(f"/api/home-pickups/{booked['id']}/restore")
+    assert back.status_code == 200 and back.json()["status"] == "requested"
+    assert client.post(f"/api/home-pickups/{booked['id']}/restore").status_code == 409  # not cancelled any more
+
+    client.post(f"/api/home-pickups/{booked['id']}/cancel")
+    with client.app.state.sessionmaker() as db:
+        db.get(HomePickup, booked["id"]).finished_at = datetime.now(UTC) - timedelta(minutes=11)
+        db.commit()
+    late = client.post(f"/api/home-pickups/{booked['id']}/restore")
+    assert late.status_code == 409 and late.json()["detail"]["code"] == "cannot_restore"
+    login(client, "col1@example.com")
+    assert client.post(f"/api/home-pickups/{booked['id']}/restore").status_code == 404  # not theirs

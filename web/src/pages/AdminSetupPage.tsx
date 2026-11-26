@@ -69,7 +69,7 @@ function Points() {
     <section className="account__section" aria-labelledby="points-head">
       <h2 id="points-head">Drop-off points</h2>
       {points.isPending && <Spinner label="Loading drop-off points…" />}
-      {points.error && <ErrorNote>{points.error.message}</ErrorNote>}
+      {points.error && <ErrorNote onRetry={() => void points.refetch()}>{points.error.message}</ErrorNote>}
       {points.data && points.data.length === 0 && <p className="empty">No drop-off points yet. Add the first one below.</p>}
       {points.data && points.data.length > 0 && (
         <table className="table">
@@ -180,7 +180,7 @@ function Rates() {
         value what was collected. Set both to your scheme’s real values.
       </p>
       {streams.isPending && <Spinner label="Loading bins…" />}
-      {streams.error && <ErrorNote>{streams.error.message}</ErrorNote>}
+      {streams.error && <ErrorNote onRetry={() => void streams.refetch()}>{streams.error.message}</ErrorNote>}
       {streams.data && (
         <table className="table">
           <thead>
@@ -273,7 +273,7 @@ function Rewards() {
     <section className="account__section" aria-labelledby="rewards-head">
       <h2 id="rewards-head">Rewards</h2>
       {rewards.isPending && <Spinner label="Loading rewards…" />}
-      {rewards.error && <ErrorNote>{rewards.error.message}</ErrorNote>}
+      {rewards.error && <ErrorNote onRetry={() => void rewards.refetch()}>{rewards.error.message}</ErrorNote>}
       {rewards.data && rewards.data.length === 0 && <p className="empty">No rewards yet. Add the first one below.</p>}
       {rewards.data && rewards.data.length > 0 && (
         <table className="table">
@@ -376,7 +376,7 @@ function StaffRoles() {
         </Button>
       </form>
       {staff.isPending && <Spinner label="Loading…" />}
-      {staff.error && <ErrorNote>{staff.error.message}</ErrorNote>}
+      {staff.error && <ErrorNote onRetry={() => void staff.refetch()}>{staff.error.message}</ErrorNote>}
       {staff.data && staff.data.length === 0 && <p className="empty">Nobody matches.</p>}
       {staff.data && staff.data.length > 0 && (
         <table className="table">

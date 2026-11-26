@@ -1,0 +1,337 @@
+/* ==== Motion (Phase 8a) ==============================================================================
+   Every movement here explains a change: where something came from (pages, the scan photo), what changed
+   (numbers, bars, the answer's stamp), or that an action worked (ticks, notes at the bottom). Only transform
+   and opacity move. Under reduced motion base.css ends every animation at once, and the view-transition
+   rules below are switched off, so nothing is lost: the end state is the same. design.md, Motion, is the rule. */
+
+:root {
+  /* A small overshoot that settles, for things that land: the stamp, pins, notes */
+  --ease-land: linear(0, 0.21 6%, 0.62 16%, 0.92 27%, 1.04 37%, 1.06 45%, 1.02 60%, 1 75%, 1);
+}
+
+/* ---- Pages glide; the masthead, the tab bar and the active-link mark stay put or slide ---------------- */
+.masthead {
+  view-transition-name: masthead;
+}
+.tabbar {
+  view-transition-name: tabbar;
+}
+::view-transition-group(masthead),
+::view-transition-group(tabbar) {
+  animation-duration: 0s;
+}
+::view-transition-old(root) {
+  animation: page-out 140ms var(--ease-in) both;
+}
+::view-transition-new(root) {
+  animation: page-in 320ms var(--ease-out) 40ms both;
+}
+@keyframes page-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+/* The green mark under the current link slides to the new one */
+.navmark {
+  position: absolute;
+  inset: auto 0 -2px;
+  height: 2px;
+  background: var(--color-accent);
+  view-transition-name: navmark;
+}
+.tabmark {
+  position: absolute;
+  top: 0;
+  left: 18%;
+  width: 64%;
+  height: 3px;
+  background: var(--color-accent);
+  view-transition-name: tabmark;
+}
+::view-transition-group(navmark),
+::view-transition-group(tabmark) {
+  animation-duration: 320ms;
+  animation-timing-function: var(--ease-out);
+}
+/* The scan photo moves from the preview into the result, instead of the page swapping under it */
+::view-transition-group(scan-photo) {
+  animation-duration: 480ms;
+  animation-timing-function: var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* ---- Buttons answer the press --------------------------------------------------------------------------- */
+.btn:active,
+.tab:active,
+.choice:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+/* ---- The answer: the block settles, the bin's name stamps down, confidence fills, tips follow -------------- */
+.answer h2 {
+  transform-origin: left 60%;
+  animation: stamp 560ms var(--ease-land) 140ms both;
+}
+@keyframes stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.28) rotate(-2.5deg);
+  }
+  35% {
+    opacity: 1;
+  }
+}
+.answer__meter {
+  display: block;
+  width: min(100%, 18rem);
+  height: 4px;
+  margin-top: var(--space-xs);
+  background: color-mix(in oklab, var(--color-paper) 28%, transparent);
+}
+.answer__meter > span {
+  display: block;
+  height: 100%;
+  background: var(--color-paper);
+  transform: scaleX(var(--v, 0));
+  transform-origin: left;
+  animation: grow-x 700ms var(--ease-out) 260ms both;
+}
+.answer__body li {
+  animation: rise 380ms var(--ease-out) both;
+  animation-delay: calc(420ms + var(--i, 0) * 80ms);
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* ---- Bars grow from their baseline, a beat apart --------------------------------------------------------- */
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+.fill__bar,
+.probs__fill,
+.hbar__bar,
+.progress__bar {
+  transform-origin: left;
+  animation: grow-x 760ms var(--ease-out) both;
+}
+.hbar__bar,
+.progress__bar {
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+.week__bar {
+  transform-origin: bottom;
+  animation: grow-y 720ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+.week__value {
+  animation: rise 360ms var(--ease-out) both;
+  animation-delay: calc(500ms + var(--i, 0) * 55ms);
+}
+
+/* ---- Lists arrive in order, once ------------------------------------------------------------------------- */
+.places > li,
+.jobs > li,
+.rewards > li,
+.firsttime li {
+  animation: rise 420ms var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 8) * 50ms);
+}
+
+/* ---- Map: pins drop in, the route draws itself ----------------------------------------------------------- */
+.pin--enter {
+  animation: pin-drop 520ms var(--ease-land) both;
+  animation-delay: calc(min(var(--i, 0), 12) * 45ms);
+}
+@keyframes pin-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.85);
+  }
+}
+.map-route--draw {
+  stroke-dasharray: var(--len) var(--len);
+  stroke-dashoffset: var(--len);
+  animation: draw 1100ms var(--ease-in-out) 200ms forwards;
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ---- Numbers that changed: the count runs, and what was added floats up ----------------------------------- */
+.countup {
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.gain {
+  display: inline-block;
+  margin-left: var(--space-sm);
+  color: var(--color-accent);
+  font: 600 var(--text-lg) / 1 var(--font-display);
+  animation: gain 1600ms var(--ease-out) 300ms both;
+}
+@keyframes gain {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  20% {
+    opacity: 1;
+    transform: none;
+  }
+  80% {
+    opacity: 1;
+  }
+}
+
+/* ---- Ticks draw themselves -------------------------------------------------------------------------------- */
+.drawn-check {
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: square;
+}
+.drawn-check path {
+  stroke-dasharray: 24;
+  animation: tick 420ms var(--ease-out) 120ms both;
+}
+@keyframes tick {
+  from {
+    stroke-dashoffset: 24;
+  }
+}
+
+/* ---- Notes at the bottom: "Booked", "Collected", with Undo where it applies -------------------------------- */
+.toasts {
+  position: fixed;
+  inset-inline: 0;
+  bottom: var(--space-lg);
+  z-index: 1100;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-xs);
+  padding-inline: var(--space-md);
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 48px;
+  max-width: 32rem;
+  padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-md);
+  border: var(--rule-hair) solid var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-size: var(--text-md);
+  pointer-events: auto;
+  animation: toast-in 420ms var(--ease-land) both;
+}
+.toast .drawn-check {
+  color: var(--color-paper);
+}
+.toast__text {
+  flex: 1;
+}
+.toast__action,
+.toast__close {
+  display: inline-grid;
+  place-items: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 var(--space-sm);
+  border: 0;
+  background: none;
+  color: var(--color-paper);
+  font: 600 var(--text-md) / 1 var(--font-display);
+  cursor: pointer;
+}
+.toast__action {
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.3em;
+}
+.toast__action:focus-visible,
+.toast__close:focus-visible {
+  outline: 2px solid var(--color-paper);
+  outline-offset: -4px;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+}
+@media (max-width: 60rem) {
+  .toasts {
+    bottom: calc(76px + env(safe-area-inset-bottom)); /* above the tab bar */
+  }
+}
+
+/* ---- Loading: the shape of what is coming, shimmering softly ---------------------------------------------- */
+.skeleton {
+  display: grid;
+  gap: var(--space-sm);
+  padding-block: var(--space-lg);
+}
+.skeleton__line,
+.skeleton__block {
+  display: block;
+  height: 14px;
+  background: linear-gradient(90deg, var(--color-paper-2) 0%, var(--color-paper-3) 45%, var(--color-paper-2) 90%);
+  background-size: 300% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+.skeleton__block {
+  height: 220px;
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ---- Rewards: how close you are --------------------------------------------------------------------------- */
+.progress {
+  display: grid;
+  gap: var(--space-2xs);
+  min-width: 10rem;
+}
+.progress__track {
+  height: 6px;
+  background: var(--color-paper-3);
+}
+.progress__bar {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+}

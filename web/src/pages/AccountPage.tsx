@@ -1,13 +1,18 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Gift } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { BinBadge } from "../components/BinBadge";
+import { CountUp } from "../components/CountUp";
 import { MemberQR } from "../components/MemberQR";
+import { Skeleton } from "../components/Skeleton";
 import { Button, ButtonLink, ErrorNote, Spinner } from "../components/ui";
 import { api } from "../lib/api";
 import { dateTime, kg } from "../lib/format";
 import { useMe } from "../lib/hooks";
+import { remember, remembered } from "../lib/motion";
+import type { Card } from "../lib/types";
 import { ScanHistory } from "./HistoryPage";
 
 export function AccountPage() {
@@ -42,14 +47,28 @@ export function AccountPage() {
 
 function MemberCard() {
   const card = useQuery({ queryKey: ["points", "card"], queryFn: api.card });
-  if (card.isPending) return <Spinner label="Loading your card…" />;
-  if (card.error) return <ErrorNote>{card.error.message}</ErrorNote>;
-  const c = card.data;
+  if (card.isPending) return <Skeleton label="Loading your card…" lines={3} />;
+  if (card.error) return <ErrorNote onRetry={() => void card.refetch()}>{card.error.message}</ErrorNote>;
+  return <MemberCardBody c={card.data} />;
+}
+
+function MemberCardBody({ c }: { c: Card }) {
+  // What this browser saw last time: the count runs from there, and anything earned since floats up
+  const [seen] = useState(() => remembered(`balance:${c.member_code}`));
+  useEffect(() => remember(`balance:${c.member_code}`, c.balance), [c.member_code, c.balance]);
+  const gained = seen !== null && c.balance > seen ? c.balance - seen : 0;
   return (
     <section className="member" aria-label="Member card">
       <div className="member__balance">
         <p className="label">Your points</p>
-        <p className="figure-num member__figure">{c.balance.toLocaleString("en-MY")}</p>
+        <p className="figure-num member__figure">
+          <CountUp from={seen ?? 0} to={c.balance} />
+          {gained > 0 && (
+            <span className="gain" title="Earned since your last visit">
+              +{gained.toLocaleString("en-MY")}
+            </span>
+          )}
+        </p>
         <p>
           Hand in sorted recycling at a drop-off point, or{" "}
           <Link to="/pickup" className="link">
@@ -82,12 +101,15 @@ function PointsHistory() {
   return (
     <section className="account__section" aria-labelledby="points-head">
       <h2 id="points-head">Points history</h2>
-      {q.isPending && <Spinner label="Loading your points…" />}
-      {q.error && <ErrorNote>{q.error.message}</ErrorNote>}
+      {q.isPending && <Skeleton label="Loading your points…" />}
+      {q.error && <ErrorNote onRetry={() => void q.refetch()}>{q.error.message}</ErrorNote>}
       {q.data && q.data.pages[0]!.items.length === 0 && (
         <p className="empty">
           No points yet. Take your sorted recycling to a drop-off point; the points appear here as soon as staff
-          weigh it. <Link to="/rewards#where" className="link">Where to hand it in</Link>
+          weigh it.{" "}
+          <Link to="/map" className="link">
+            Find the nearest drop-off point
+          </Link>
         </p>
       )}
       {q.data && q.data.pages[0]!.items.length > 0 && (

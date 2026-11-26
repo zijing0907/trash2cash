@@ -3,7 +3,8 @@ import { Check } from "lucide-react";
 import { useState } from "react";
 
 import { BinBadge } from "../components/BinBadge";
-import { Button, ButtonLink, ErrorNote, Spinner } from "../components/ui";
+import { Skeleton } from "../components/Skeleton";
+import { Button, ButtonLink, ErrorNote } from "../components/ui";
 import { api } from "../lib/api";
 import { pts } from "../lib/format";
 import { useMe } from "../lib/hooks";
@@ -42,8 +43,8 @@ export function RewardsPage() {
         </div>
       )}
 
-      {rewards.isPending && <Spinner label="Loading rewards…" />}
-      {rewards.error && <ErrorNote>{rewards.error.message}</ErrorNote>}
+      {rewards.isPending && <Skeleton label="Loading rewards…" />}
+      {rewards.error && <ErrorNote onRetry={() => void rewards.refetch()}>{rewards.error.message}</ErrorNote>}
       {rewards.data && rewards.data.length === 0 && <p className="empty">No rewards are on offer right now.</p>}
       {rewards.data && rewards.data.length > 0 && (
         <>
@@ -51,8 +52,8 @@ export function RewardsPage() {
             <p className="demo-note">Sample rewards from the demo data, not a real offer.</p>
           )}
           <ul className="rewards">
-            {rewards.data.map((r) => (
-              <RewardRow key={r.id} reward={r} balance={balance} signedIn={!!me} onClaimed={setClaimed} />
+            {rewards.data.map((r, i) => (
+              <RewardRow key={r.id} i={i} reward={r} balance={balance} signedIn={!!me} onClaimed={setClaimed} />
             ))}
           </ul>
         </>
@@ -66,6 +67,8 @@ export function RewardsPage() {
 function RewardRow(props: {
   reward: Reward;
   balance: number | null;
+  /** Position in the list, for the order the rows arrive in */
+  i: number;
   signedIn: boolean;
   onClaimed: (r: Redemption) => void;
 }) {
@@ -85,7 +88,7 @@ function RewardRow(props: {
   const soldOut = r.stock === 0;
 
   return (
-    <li className="reward">
+    <li className="reward" style={{ "--i": props.i } as React.CSSProperties}>
       <div>
         <h2 className="reward__name">{r.name}</h2>
         {r.description && <p>{r.description}</p>}
@@ -99,8 +102,13 @@ function RewardRow(props: {
           </ButtonLink>
         ) : soldOut ? (
           <span className="muted">Sold out</span>
-        ) : short !== null && short > 0 ? (
-          <span className="muted">{pts(short)} to go</span>
+        ) : short !== null && short > 0 && balance !== null ? (
+          <div className="progress">
+            <span className="progress__track" aria-hidden>
+              <span className="progress__bar" style={{ width: `${(balance / r.cost_points) * 100}%` }} />
+            </span>
+            <span className="muted small-print">{pts(short)} to go</span>
+          </div>
         ) : confirming ? (
           <div className="confirm-inline">
             <span>Spend {pts(r.cost_points)}?</span>
@@ -127,8 +135,8 @@ function WhereToHandIn() {
   return (
     <section className="account__section" id="where" aria-labelledby="where-head">
       <h2 id="where-head">Where to hand it in</h2>
-      {points.isPending && <Spinner label="Loading drop-off points…" />}
-      {points.error && <ErrorNote>{points.error.message}</ErrorNote>}
+      {points.isPending && <Skeleton label="Loading drop-off points…" lines={3} />}
+      {points.error && <ErrorNote onRetry={() => void points.refetch()}>{points.error.message}</ErrorNote>}
       {points.data && points.data.length === 0 && <p className="empty">No drop-off points are open yet.</p>}
       {points.data && points.data.length > 0 && (
         <>

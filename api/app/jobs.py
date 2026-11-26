@@ -13,6 +13,7 @@ from .models import Container, Job, JobItem, JobStatus, Pickup, User
 from .points import container_fill_g
 
 ACTIVE = (JobStatus.open, JobStatus.taken)
+UNDO_MINUTES = 10  # how long a withdrawn job can be brought back with Undo
 MAX_PICKUP_KG = 5_000  # a sanity limit for one bin's load, not a truck's capacity
 
 # The first bytes of the photo formats a phone produces; anything else is refused
