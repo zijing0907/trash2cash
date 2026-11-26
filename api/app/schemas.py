@@ -198,6 +198,14 @@ class PickupIn(BaseModel):
     container_ids: list[int] = Field(min_length=1, max_length=50)
 
 
+class JobOfferIn(BaseModel):
+    point_ids: list[int] = Field(min_length=1, max_length=50, description="Drop-off points to offer, one job each")
+
+
+class SkipIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=200, description="Why the bin could not be emptied")
+
+
 class StreamIn(BaseModel):
     points_per_kg: int = Field(ge=0, le=10_000)
     price_sen_per_kg: int = Field(ge=0, le=1_000_000)

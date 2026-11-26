@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from .forecast import WINDOW_DAYS, forecast, route
+from .jobs import active_job_by_point
 from .models import Container, Deposit, DepositLine, DropPoint, LedgerEntry, LedgerReason, Stream
 from .points import container_fill_g
 
@@ -19,9 +20,10 @@ def local_day_start(day: date, tz: ZoneInfo) -> datetime:
     return datetime.combine(day, time.min, tzinfo=tz).astimezone(UTC)
 
 
-def build_board(db: Session, tz: ZoneInfo, now: datetime) -> dict:
+def point_statuses(db: Session, tz: ZoneInfo, now: datetime) -> list[dict]:
+    """Every open drop-off point with each bin's fill, inflow, forecast and when it was last weighed into or
+    emptied, most urgent first. Shared by the admin board, the public map and the job offer."""
     today = now.astimezone(tz).date()
-    streams = {s.key: s for s in db.scalars(select(Stream))}
     points = db.scalars(
         select(DropPoint)
         .where(DropPoint.active)
@@ -39,6 +41,16 @@ def build_board(db: Session, tz: ZoneInfo, now: datetime) -> dict:
     ):
         day = (created if created.tzinfo else created.replace(tzinfo=UTC)).astimezone(tz).date()
         daily[(point_id, key)][day] += grams / 1000
+
+    # The last weighed drop-off into each (point, bin), however long ago
+    last_in = dict(
+        ((point_id, key), at)
+        for point_id, key, at in db.execute(
+            select(Deposit.point_id, DepositLine.stream_key, func.max(Deposit.created_at))
+            .join(DepositLine, DepositLine.deposit_id == Deposit.id)
+            .group_by(Deposit.point_id, DepositLine.stream_key)
+        )
+    )
 
     out_points = []
     for p in points:
@@ -59,6 +71,7 @@ def build_board(db: Session, tz: ZoneInfo, now: datetime) -> dict:
                     "pickup_on": fc.pickup_on,
                     "status": fc.status,
                     "last_pickup_at": c.emptied_at,
+                    "last_deposit_at": last_in.get((p.id, c.stream_key)),
                 }
             )
         bins.sort(key=lambda b: (STATUS_ORDER[b["status"]], b["pickup_on"] or date.max))
@@ -77,6 +90,21 @@ def build_board(db: Session, tz: ZoneInfo, now: datetime) -> dict:
             }
         )
     out_points.sort(key=lambda p: (STATUS_ORDER[p["status"]], p["next_pickup_on"] or date.max, p["name"]))
+    return out_points
+
+
+def build_board(db: Session, tz: ZoneInfo, now: datetime) -> dict:
+    today = now.astimezone(tz).date()
+    streams = {s.key: s for s in db.scalars(select(Stream))}
+    out_points = point_statuses(db, tz, now)
+    jobs = active_job_by_point(db)
+    for p in out_points:
+        j = jobs.get(p["id"])
+        p["job"] = (
+            {"id": j.id, "status": j.status, "collector": j.collector.display_name if j.collector else None}
+            if j
+            else None
+        )
 
     # Today's run: every point with a bin due, most urgent first, then nearest neighbour
     due = [p for p in out_points if p["status"] == "due"]
@@ -88,6 +116,7 @@ def build_board(db: Session, tz: ZoneInfo, now: datetime) -> dict:
             "name": by_id[pid]["name"],
             "km_from_previous": round(km, 1),
             "bins": [b["stream_key"] for b in by_id[pid]["bins"] if b["status"] == "due"],
+            "job": by_id[pid]["job"],
         }
         for pid, km in run
     ]
@@ -117,7 +146,7 @@ def build_board(db: Session, tz: ZoneInfo, now: datetime) -> dict:
 
     return {
         "today": today,
-        "is_demo": any(p.is_demo for p in points),
+        "is_demo": any(p["is_demo"] for p in out_points),
         "points": out_points,
         "run": {"stops": stops, "total_km": round(sum(s["km_from_previous"] for s in stops), 1)},
         "month": {

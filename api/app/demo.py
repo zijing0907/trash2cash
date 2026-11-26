@@ -54,9 +54,26 @@ REWARDS = [
 PASSWORD = "demo-password"
 
 
+COLLECTORS = [("collector1.demo@example.com", "Demo collector 1"), ("collector2.demo@example.com", "Demo collector 2")]
+
+
+def add_demo_collectors(db: Session) -> list[str]:
+    """Phase 4's demo collectors; also added to a demo seeded before they existed."""
+    added = []
+    for email, name in COLLECTORS:
+        if db.scalar(select(User.id).where(User.email == email)) is None:
+            db.add(User(email=email, display_name=name, password_hash=hash_password(PASSWORD), role=Role.collector,
+                        member_code=new_member_code(db)))  # fmt: skip
+            db.flush()
+            added.append(email)
+    return added
+
+
 def seed_demo(db: Session, days: int = 42, seed: int = 7) -> dict:
     if db.scalar(select(DropPoint.id).where(DropPoint.is_demo)):
-        return {"skipped": "Demo data already exists."}
+        added = add_demo_collectors(db)
+        db.commit()
+        return {"skipped": "Demo data already exists.", **({"added collectors": added} if added else {})}
     rng = random.Random(seed)
     now = datetime.now(UTC).replace(microsecond=0)
     start = now - timedelta(days=days)
@@ -86,6 +103,7 @@ def seed_demo(db: Session, days: int = 42, seed: int = 7) -> dict:
     residents = [
         user(f"resident{i:02d}.demo@example.com", f"Demo resident {i:02d}", Role.resident) for i in range(1, 41)
     ]
+    add_demo_collectors(db)
     rates = {k: v[0] for k, v in SAMPLE_RATES.items()}
 
     # 1. Deposits, 8 am to 8 pm Malaysian time, busier at points A and C and at weekends
@@ -156,6 +174,7 @@ def seed_demo(db: Session, days: int = 42, seed: int = 7) -> dict:
             "admin": "admin.demo@example.com",
             "operator": "operator1.demo@example.com",
             "resident": "resident01.demo@example.com",
+            "collector": COLLECTORS[0][0],
         },
         "password": PASSWORD,
     }
