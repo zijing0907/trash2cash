@@ -1,4 +1,4 @@
-import { BookOpen, Brain, Gift, History, House, LayoutGrid, LogOut, Scale, ScanLine } from "lucide-react";
+import { BookOpen, Brain, Gift, History, House, LayoutGrid, LogOut, MapPinned, Scale, ScanLine, Truck } from "lucide-react";
 import { NavLink, Outlet, ScrollRestoration, useNavigate } from "react-router";
 
 import { useLogout, useMe } from "../lib/hooks";
@@ -16,22 +16,26 @@ const LINKS = {
   board: { to: "/admin", label: "Board", short: "Board", icon: LayoutGrid },
   me: { to: "/me", label: "My account", short: "Me", icon: History },
   home: { to: "/", label: "Home", short: "Home", icon: House },
+  map: { to: "/map", label: "Map", short: "Map", icon: MapPinned },
+  jobs: { to: "/collect", label: "Jobs", short: "Jobs", icon: Truck },
 };
 
 /** Top links by role: staff get their screens; everyone keeps scanning and their account. */
 function navFor(role: Role | undefined) {
-  const { scan, guide, model, rewards, weigh, board, me } = LINKS;
-  if (role === "admin") return [scan, guide, rewards, weigh, board, me];
-  if (role === "operator") return [scan, guide, rewards, weigh, me];
-  return [scan, guide, model, rewards, me];
+  const { scan, map, guide, model, rewards, weigh, board, jobs, me } = LINKS;
+  if (role === "admin") return [scan, map, rewards, weigh, board, me];
+  if (role === "operator") return [scan, map, guide, rewards, weigh, me];
+  if (role === "collector") return [jobs, map, scan, guide, me];
+  return [scan, map, guide, model, rewards, me];
 }
 
 /** The phone's five tabs */
 function tabsFor(role: Role | undefined) {
-  const { home, scan, guide, rewards, weigh, board, me } = LINKS;
+  const { home, scan, map, guide, rewards, weigh, board, jobs, me } = LINKS;
   if (role === "admin") return [home, scan, weigh, board, me];
-  if (role === "operator") return [home, scan, weigh, rewards, me];
-  return [home, scan, guide, rewards, me];
+  if (role === "operator") return [home, scan, weigh, map, me];
+  if (role === "collector") return [home, jobs, map, scan, me];
+  return [scan, map, guide, rewards, me];
 }
 
 function AccountArea() {

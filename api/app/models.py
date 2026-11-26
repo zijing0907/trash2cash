@@ -1,11 +1,25 @@
 """Database tables. Milestone 2: users and scans. Milestone 3: drop-off points, deposits weighed by an operator,
-the points ledger and rewards. Milestone 4: pickups, which the admin board forecasts."""
+the points ledger and rewards. Milestone 4: pickups, which the admin board forecasts. Phase 4: pickup jobs that
+collectors take."""
 
 import enum
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, Float, ForeignKey, Index, Integer, String, UniqueConstraint, Uuid
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+    Uuid,
+    false,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -19,6 +33,7 @@ class Role(enum.StrEnum):
     resident = "resident"  # scans items, earns points (Milestone 3)
     operator = "operator"  # weighs and verifies deposits at a drop-off point (Milestone 3)
     admin = "admin"  # sees every drop-off point and the pickup forecast (Milestone 4)
+    collector = "collector"  # takes pickup jobs, empties bins, weighs what they took (Phase 4)
 
 
 class User(Base):
@@ -211,7 +226,12 @@ class Redemption(Base):
 
 
 class Pickup(Base):
-    """A container emptied by the collection truck."""
+    """A container emptied by the collection truck.
+
+    An admin's one-tap pickup records what the deposits add up to (measured false). A collector's pickup records
+    what the truck's scale said (measured true), next to what the deposits added up to (expected_g); the gap is
+    what people left without weighing, which Phase 6 uses to correct the forecast.
+    """
 
     __tablename__ = "pickups"
 
@@ -220,3 +240,53 @@ class Pickup(Base):
     collected_g: Mapped[int] = mapped_column(Integer)
     by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    measured: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    expected_g: Mapped[int | None] = mapped_column(Integer)  # weighed deposits since the bin was last emptied
+    photo_path: Mapped[str | None] = mapped_column(String(200))  # the collector's photo, inside MEDIA_DIR
+
+
+class JobStatus(enum.StrEnum):
+    open = "open"  # offered to every collector
+    taken = "taken"  # one collector has it
+    done = "done"  # every bin collected or skipped
+    cancelled = "cancelled"  # withdrawn by an admin
+
+
+class Job(Base):
+    """A pickup at one drop-off point, offered to collectors, who take it like a ride on Grab (Phase 4)."""
+
+    __tablename__ = "jobs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    point_id: Mapped[int] = mapped_column(ForeignKey("drop_points.id", ondelete="CASCADE"), index=True)
+    status: Mapped[JobStatus] = mapped_column(
+        Enum(JobStatus, name="job_status", native_enum=False, length=20), default=JobStatus.open, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    collector_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    taken_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    point: Mapped[DropPoint] = relationship()
+    collector: Mapped[User | None] = relationship(foreign_keys=[collector_id])
+    items: Mapped[list["JobItem"]] = relationship(back_populates="job", order_by="JobItem.id")
+
+
+class JobItem(Base):
+    """One bin in a job: collected (with a pickup), skipped (with the reason), or still to do."""
+
+    __tablename__ = "job_items"
+    __table_args__ = (UniqueConstraint("job_id", "container_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id", ondelete="CASCADE"), index=True)
+    container_id: Mapped[int] = mapped_column(ForeignKey("containers.id", ondelete="CASCADE"))
+    expected_kg: Mapped[float] = mapped_column(Float)  # the board's fill when the job was offered
+    pickup_id: Mapped[int | None] = mapped_column(ForeignKey("pickups.id", ondelete="SET NULL"))
+    skipped_reason: Mapped[str | None] = mapped_column(String(200))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    job: Mapped[Job] = relationship(back_populates="items")
+    container: Mapped[Container] = relationship()
+    pickup: Mapped[Pickup | None] = relationship()

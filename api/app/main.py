@@ -14,7 +14,7 @@ from .config import Settings, load_settings
 from .db import make_engine, make_sessionmaker
 from .ml_client import MLClient
 from .ratelimit import RateLimiter
-from .routers import account, admin, auth, meta, operator, scans
+from .routers import account, admin, auth, collector, meta, operator, public_map, scans
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -73,6 +73,8 @@ def create_app(settings: Settings | None = None, ml_client: MLClient | None = No
     api.include_router(account.router)
     api.include_router(operator.router)
     api.include_router(admin.router)
+    api.include_router(collector.router)
+    api.include_router(public_map.router)
     app.include_router(api)
     return app
 

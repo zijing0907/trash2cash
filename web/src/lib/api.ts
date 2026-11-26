@@ -1,9 +1,12 @@
 import type {
   Board,
   Card,
+  CollectorJobs,
   DepositOut,
   DropPoint,
   DropPointAdmin,
+  DropOffMap,
+  Job,
   ModelInfo,
   PointsPage,
   Redemption,
@@ -120,7 +123,29 @@ export const api = {
     id: number | null,
     body: { name: string; address: string; lat: number; lng: number; active: boolean; bins: { stream_key: string; capacity_kg: number }[] },
   ) => (id ? request<DropPointAdmin>(`/admin/points/${id}`, json("PUT", body)) : request<DropPointAdmin>("/admin/points", json("POST", body))),
+  offerJobs: (pointIds: number[]) => request<Job[]>("/admin/jobs", json("POST", { point_ids: pointIds })),
+  adminJobs: () => request<Job[]>("/admin/jobs"),
+  cancelJob: (id: number) => request<Job>(`/admin/jobs/${id}/cancel`, { method: "POST" }),
   staff: (q: string) => request<Staff[]>(`/admin/staff?q=${encodeURIComponent(q)}`),
   setRole: (userId: number, body: { role: string; drop_point_id: number | null }) =>
     request<Staff>(`/admin/users/${userId}/role`, json("PUT", body)),
+
+  // The public map (Phase 4)
+  dropOffMap: () => request<DropOffMap>("/map"),
+
+  // Collectors (Phase 4)
+  collectorJobs: () => request<CollectorJobs>("/collector/jobs"),
+  takeJob: (id: number) => request<Job>(`/collector/jobs/${id}/take`, { method: "POST" }),
+  releaseJob: (id: number) => request<Job>(`/collector/jobs/${id}/release`, { method: "POST" }),
+  collectBin: (jobId: number, itemId: number, weightKg: number, photo: File) => {
+    const form = new FormData();
+    form.append("weight_kg", String(weightKg));
+    form.append("photo", photo);
+    return request<Job>(`/collector/jobs/${jobId}/items/${itemId}/collect`, { method: "POST", body: form });
+  },
+  skipBin: (jobId: number, itemId: number, reason: string) =>
+    request<Job>(`/collector/jobs/${jobId}/items/${itemId}/skip`, json("POST", { reason })),
 };
+
+/** The collector's photo of an emptied bin (admins, and the collector who took it) */
+export const pickupPhotoUrl = (pickupId: number) => `/api/pickups/${pickupId}/photo`;

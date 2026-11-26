@@ -8,9 +8,9 @@ need a pickup.
 
 > **Status:** work in progress. Done: the ML service (Milestone 1), the API and web app with the full scan
 > flow (Milestone 2), the trained model, drop-off deposits with points and rewards (Milestone 3), the admin
-> pickup board (Milestone 4), voucher collection and drop-off point setup (Phase 1), and the live camera scan
-> with bin-level answers and the battery warning (Phase 2). Next: the model running in the browser and a public
-> link, then real-photo results.
+> pickup board (Milestone 4), voucher collection and drop-off point setup (Phase 1), the live camera scan
+> with bin-level answers and the battery warning (Phase 2), and the drop-off map with pickup jobs for collectors
+> (Phase 4). Next: home pickups, public "bin full" reports and a forecast that corrects itself.
 
 ## What works today
 
@@ -35,6 +35,12 @@ need a pickup.
 - **Pickup board for admins:** every bin's fill, how fast it fills (the last two weeks' average) and the day it will
   be full; bins forecast to pass 90% are due, and today's run orders those drop-off points most urgent first, then
   nearest next. Also this month's weight, its worth at buy-back prices, deposits and points.
+- **Map of drop-off points** (OpenStreetMap): the nearest point to you, and each bin's fill with how the app knows
+  it ("Weighed 2 hours ago", "Emptied 30 minutes ago") and an estimate of when it will be full, labelled as one.
+  There are no sensors, so there is no live percentage.
+- **Pickup jobs for collectors (the Grab idea):** the admin offers today's run; a collector takes a job (only one
+  can), follows the stops on the map, and for each bin enters what the truck's scale said and photographs the
+  empty bin, or says why it could not be emptied. The admin sees the scale's weight next to what was weighed in.
 
 ## Origin
 
@@ -91,8 +97,9 @@ labelled as demo data in the app). In a second terminal:
 docker compose exec api python -m app.cli seed-demo
 ```
 
-Then log in as `admin.demo@example.com`, `operator1.demo@example.com` or `resident01.demo@example.com`, password
-`demo-password`. For a real setup, create the first admin instead:
+Then log in as `admin.demo@example.com`, `operator1.demo@example.com`, `collector1.demo@example.com` or
+`resident01.demo@example.com`, password `demo-password`. Running `seed-demo` again on an older demo adds the
+collectors. For a real setup, create the first admin instead:
 
 ```bash
 docker compose exec api python -m app.cli create-user --email you@example.com --name "Your name" --role admin

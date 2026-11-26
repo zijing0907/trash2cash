@@ -3,6 +3,7 @@ import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 
 import { BinBadge } from "../components/BinBadge";
+import { MapView } from "../components/MapView";
 import { RoleGate } from "../components/RoleGate";
 import { Button, ErrorNote, Spinner } from "../components/ui";
 import { api } from "../lib/api";
@@ -126,8 +127,17 @@ function Points() {
           <span>Map position (latitude, longitude)</span>
           <input className="input" inputMode="decimal" value={form.coords} placeholder="4.3375, 101.1436"
                  onChange={(e) => setForm({ ...form, coords: e.target.value })} />
-          <small className="field__help">In Google Maps or OpenStreetMap, right-click the place and copy its coordinates.</small>
+          <small className="field__help">
+            Click the place on the map, or paste its coordinates from Google Maps or OpenStreetMap (right-click the place).
+          </small>
         </label>
+        <MapView
+          className="map--picker"
+          label="Click to set the drop-off point's position"
+          pins={[]}
+          picked={parseCoords(form.coords)}
+          onPick={([lat, lng]) => setForm((f) => ({ ...f, coords: `${lat.toFixed(5)}, ${lng.toFixed(5)}` }))}
+        />
         <label className="check">
           <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} />
           Open (residents can see it and staff can weigh deposits there)
@@ -411,10 +421,11 @@ function StaffRow({ user, points }: { user: Staff; points: DropPoint[] }) {
           <option value="resident">Resident</option>
           <option value="operator">Operator</option>
           <option value="admin">Admin</option>
+          <option value="collector">Collector</option>
         </select>
       </td>
       <td>
-        <select className="input" value={point} onChange={(e) => setPoint(e.target.value)} disabled={role === "resident"}
+        <select className="input" value={point} onChange={(e) => setPoint(e.target.value)} disabled={role === "resident" || role === "collector"}
                 aria-label={`Drop-off point of ${user.display_name}`}>
           <option value="">None</option>
           {points.map((p) => (

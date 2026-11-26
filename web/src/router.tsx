@@ -3,7 +3,6 @@ import { createBrowserRouter } from "react-router";
 import { Shell } from "./components/Shell";
 import { AccountPage } from "./pages/AccountPage";
 import { AdminBoardPage } from "./pages/AdminBoardPage";
-import { AdminSetupPage } from "./pages/AdminSetupPage";
 import { GuidePage } from "./pages/GuidePage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage, SignupPage } from "./pages/AuthPages";
@@ -20,12 +19,18 @@ export const routes = [
       { index: true, element: <HomePage /> },
       { path: "scan", element: <ScanPage /> },
       { path: "guide", element: <GuidePage /> },
+      // The map library is only downloaded by the screens that show a map
+      { path: "map", lazy: () => import("./pages/MapPage").then((m) => ({ Component: m.MapPage })) },
+      { path: "collect", lazy: () => import("./pages/CollectorPage").then((m) => ({ Component: m.CollectorPage })) },
       { path: "model", element: <ModelPage /> },
       { path: "me", element: <AccountPage /> },
       { path: "rewards", element: <RewardsPage /> },
       { path: "operator", element: <OperatorPage /> },
       { path: "admin", element: <AdminBoardPage /> },
-      { path: "admin/setup", element: <AdminSetupPage /> },
+      {
+        path: "admin/setup",
+        lazy: () => import("./pages/AdminSetupPage").then((m) => ({ Component: m.AdminSetupPage })),
+      },
       { path: "login", element: <LoginPage /> },
       { path: "signup", element: <SignupPage /> },
       { path: "*", element: <NotFoundPage /> },

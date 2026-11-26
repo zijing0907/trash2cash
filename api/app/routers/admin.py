@@ -1,18 +1,30 @@
 """Admins: the pickup board, recording pickups, bin rates and prices, rewards and staff."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from ..board import build_board
+from .. import jobs
+from ..board import build_board, point_statuses
 from ..db import get_db
 from ..errors import api_error
-from ..models import Container, Deposit, DepositLine, DropPoint, Pickup, Reward, Role, Stream, User
+from ..models import Container, Deposit, DepositLine, DropPoint, Job, JobStatus, Pickup, Reward, Role, Stream, User
 from ..points import container_fill_g
-from ..schemas import DropPointAdmin, DropPointIn, PickupIn, RewardIn, RewardOut, RoleIn, StaffOut, StreamIn, StreamOut
+from ..schemas import (
+    DropPointAdmin,
+    DropPointIn,
+    JobOfferIn,
+    PickupIn,
+    RewardIn,
+    RewardOut,
+    RoleIn,
+    StaffOut,
+    StreamIn,
+    StreamOut,
+)
 from ..security import require_role
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -40,6 +52,42 @@ def record_pickups(body: PickupIn, user: User = Depends(admin), db: Session = De
         taken += grams
     db.commit()
     return {"emptied": len(containers), "collected_kg": round(taken / 1000, 1)}
+
+
+@router.post("/jobs", status_code=201)
+def offer_jobs(body: JobOfferIn, request: Request, user: User = Depends(admin), db: Session = Depends(get_db)):
+    """Offer these points' bins to collectors, one job per point (the board's "Offer to collectors")."""
+    points = {p["id"]: p for p in point_statuses(db, ZoneInfo(request.app.state.settings.timezone), datetime.now(UTC))}
+    created = jobs.offer_jobs(db, body.point_ids, points, user)
+    db.commit()
+    return [jobs.job_out(jobs.load_job(db, j.id)) for j in created]
+
+
+@router.get("/jobs")
+def list_jobs(
+    days: int = Query(default=14, ge=1, le=366, description="Finished or withdrawn jobs from this many days back"),
+    user: User = Depends(admin),
+    db: Session = Depends(get_db),
+):
+    """Open and taken jobs, then recent finished ones, newest first."""
+    since = datetime.now(UTC) - timedelta(days=days)
+    ids = db.scalars(
+        select(Job.id)
+        .where(or_(Job.status.in_(jobs.ACTIVE), Job.created_at >= since))
+        .order_by(Job.created_at.desc(), Job.id.desc())
+    ).all()
+    return [jobs.job_out(jobs.load_job(db, i)) for i in ids]
+
+
+@router.post("/jobs/{job_id}/cancel")
+def cancel_job(job_id: int, user: User = Depends(admin), db: Session = Depends(get_db)):
+    """Withdraw a job that is not finished. Bins already collected stay collected."""
+    job = jobs.load_job(db, job_id)
+    if job.status not in jobs.ACTIVE:
+        raise api_error(409, "job_finished", "This job is already finished or withdrawn.")
+    job.status, job.finished_at = JobStatus.cancelled, datetime.now(UTC)
+    db.commit()
+    return jobs.job_out(jobs.load_job(db, job_id))
 
 
 @router.put("/streams/{key}", response_model=StreamOut)
@@ -103,7 +151,8 @@ def set_role(user_id: int, body: RoleIn, user: User = Depends(admin), db: Sessio
     if body.role == Role.operator and body.drop_point_id is None:
         raise api_error(422, "point_required", "Pick the drop-off point this operator works at.")
     target.role = body.role
-    target.drop_point_id = body.drop_point_id if body.role != Role.resident else None
+    # Residents and collectors work at no fixed point; collectors go wherever their jobs are
+    target.drop_point_id = body.drop_point_id if body.role in (Role.operator, Role.admin) else None
     db.commit()
     return target
 

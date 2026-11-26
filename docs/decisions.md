@@ -381,3 +381,38 @@ One entry per milestone: what was chosen, the alternatives, and why.
   model reads while it works, and the answer settling into place. Both are off under reduced motion
   (`web/design.md`, Motion). Everything else stays still.
 
+## Phase 4: the map and collector jobs (26 Nov 2026)
+
+### 7.1 OpenStreetMap through Leaflet
+- **Chose:** Leaflet with OpenStreetMap's standard tiles: free, no API key, no account. The tiles are shown in grey
+  so the square pins (due solid ink, soon an ink outline, like the board's status tags) and the route carry the
+  meaning. The map code is only downloaded by the three screens that show a map.
+- **Limit:** OpenStreetMap's own tile servers are for light use. A busy public site should move to a tile
+  provider; that is part of putting the site online (Phase 3). If tiles do not load, the pins and the list still
+  work and a note says so.
+- **Location:** asked only when the person presses "Nearest to me" or "Use my location", used in the browser to
+  sort and draw, never sent to the server. Browsers only allow it on https or localhost.
+
+### 7.2 Honest certainty instead of a live percentage
+- **Chose:** there are no sensors, so the map never shows a "live" fill. Each bin says what its fill rests on and
+  how old that is: the last weighed drop-off ("Weighed 2 hours ago") or the last pickup ("Emptied 30 minutes ago,
+  nothing weighed in since"). After seven days without either, it adds "so it may be out of date". The forecast
+  is always worded as an estimate. Phase 6 adds a third kind of fact: reports from the public.
+- **Why:** a percentage looks precise but would hide that unweighed items are not counted. Saying how each number
+  is known is more useful and easier to defend.
+
+### 7.3 Jobs: one point, one collector, proof at every bin
+- **Chose:** a job is one drop-off point's bins that are due or soon (or, if none, every bin with something in
+  it). An admin offers the run in one tap; a point cannot have two open jobs. Taking a job is a conditional
+  `UPDATE ... WHERE status = 'open'`, so when two collectors tap at once, one gets it and the other is told.
+  Finishing a bin is also conditional, so a second tap on a slow connection does not record a second pickup.
+- **At each bin:** the weight from the truck's scale and a photo of the emptied bin (checked by its first bytes:
+  JPEG, PNG, WebP or HEIC, and shrunk in the browser first). The pickup stores both what the scale said
+  (`collected_g`, `measured = true`) and what the weighed drop-offs added up to (`expected_g`). The gap is what
+  people left without weighing; Phase 6 uses it to correct the forecast. A bin that could not be emptied is
+  skipped with a reason and keeps its fill.
+- **Hand back:** a collector can return a job until they have finished a bin; after that they finish or skip the
+  rest. An admin can withdraw any open or taken job; bins already collected stay collected.
+- **Photos** are kept in the media folder and shown only to admins and to the collector who took them.
+- **Not yet:** paying collectors, and collectors' own location on the admin's map.
+
