@@ -1,17 +1,17 @@
 """Operators at a drop-off point: find the resident, weigh what they brought, credit the points."""
 
-from datetime import datetime, time
+from datetime import UTC, datetime, time
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, selectinload
 
 from ..db import get_db
 from ..errors import api_error
-from ..models import Container, Deposit, DropPoint, Role, User
+from ..models import Container, Deposit, DropPoint, Redemption, Role, User
 from ..points import balance, normalise_code, record_deposit
-from ..schemas import DepositIn, DepositOut, LineOut, ResidentOut
+from ..schemas import DepositIn, DepositOut, LineOut, ResidentOut, VoucherOut
 from ..security import require_role
 
 router = APIRouter(prefix="/operator", tags=["operator"])
@@ -79,7 +79,8 @@ def todays_deposits(
     """Today's deposits at the operator's point, newest first."""
     point = operator_point(db, user, point_id)
     tz = ZoneInfo(request.app.state.settings.timezone)
-    start = datetime.combine(datetime.now(tz).date(), time.min, tzinfo=tz)
+    # Local midnight, compared in UTC: stored times are UTC (SQLite keeps them without a zone)
+    start = datetime.combine(datetime.now(tz).date(), time.min, tzinfo=tz).astimezone(UTC)
     rows = db.scalars(
         select(Deposit)
         .where(Deposit.point_id == point.id, Deposit.created_at >= start)
@@ -88,3 +89,49 @@ def todays_deposits(
         .limit(100)
     ).all()
     return [deposit_out(d, d.resident) for d in rows]
+
+
+def find_voucher(db: Session, code: str) -> Redemption:
+    v = db.scalar(
+        select(Redemption)
+        .where(Redemption.code == normalise_code(code))
+        .options(selectinload(Redemption.reward), selectinload(Redemption.user))
+    )
+    if v is None:
+        raise api_error(404, "voucher_not_found", "No voucher has this code. Check it and try again.")
+    return v
+
+
+def voucher_out(v: Redemption) -> dict:
+    return {
+        "id": v.id,
+        "reward_name": v.reward.name,
+        "cost_points": v.cost_points,
+        "code": v.code,
+        "created_at": v.created_at,
+        "used_at": v.used_at,
+        "member_name": v.user.display_name,
+        "member_code": v.user.member_code,
+    }
+
+
+@router.get("/vouchers/{code}", response_model=VoucherOut)
+def voucher(code: str, user: User = Depends(staff), db: Session = Depends(get_db)):
+    """What a voucher is for, whose it is, and whether it was already collected."""
+    return voucher_out(find_voucher(db, code))
+
+
+@router.post("/vouchers/{code}/collect", response_model=VoucherOut)
+def collect_voucher(code: str, user: User = Depends(staff), db: Session = Depends(get_db)):
+    """Hand the reward over. One conditional update, so a code shown twice can only be collected once."""
+    v = find_voucher(db, code)
+    done = db.execute(
+        update(Redemption)
+        .where(Redemption.id == v.id, Redemption.used_at.is_(None))
+        .values(used_at=datetime.now(UTC), used_by_id=user.id)
+    ).rowcount
+    db.commit()
+    db.refresh(v)
+    if not done:
+        raise api_error(409, "already_collected", "This voucher was already collected.")
+    return voucher_out(v)

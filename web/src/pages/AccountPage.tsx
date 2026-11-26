@@ -6,7 +6,7 @@ import { BinBadge } from "../components/BinBadge";
 import { MemberQR } from "../components/MemberQR";
 import { Button, ButtonLink, ErrorNote, Spinner } from "../components/ui";
 import { api } from "../lib/api";
-import { dateTime, kg, pts } from "../lib/format";
+import { dateTime, kg } from "../lib/format";
 import { useMe } from "../lib/hooks";
 import { ScanHistory } from "./HistoryPage";
 
@@ -151,7 +151,7 @@ function Vouchers() {
             <span className="table__main">{r.reward_name}</span>
             <span className="voucher-code">{r.code}</span>
             <span className="muted">
-              {dateTime(r.created_at)}, {pts(r.cost_points)}
+              {r.used_at ? `Collected ${dateTime(r.used_at)}` : "Not collected yet: show this code at a drop-off point"}
             </span>
           </li>
         ))}

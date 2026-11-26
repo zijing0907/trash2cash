@@ -16,6 +16,7 @@
 /* Hallmark · reworded "Point your phone at a household item. A neural network we trained from scratch tells you which Malaysian recycling bin it belongs in and how to prepare it, and it says so when it isn't sure." to "Point your phone at any item to find its Malaysian recycling bin." · 58 names a hero paragraph past twelve words */
 /* Hallmark · reworded "Source ↗" to the source's name · 63 names an arrow glued to link text */
 /* Hallmark · waive 28b · below the fold and not the LCP: it only exists after the Scan QR button is pressed · the weigh-in video is the live camera feed for reading a member QR code, so a poster frame has nothing to show */
+/* Hallmark · dismissed 70 · "Handed over" on the weigh-in shows only after POST /api/operator/vouchers/{code}/collect succeeds, with the time the server recorded; a refused or failed request shows its error instead */
 /* Hallmark · answered F1 · "No, it's…" keeps its straight apostrophe because the scan tests match that exact string, and tests are not edited by a redesign */
 /* Hallmark · dismissed F20 · the credits line spans both columns under the two lists on purpose; it is not a third list */
 /* Hallmark · answered F15 · app screens part their two panes by 64px and the home page's columns by 32px; the scan screen's photo and answer need the wider gutter */

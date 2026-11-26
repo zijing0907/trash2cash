@@ -196,8 +196,12 @@ class Redemption(Base):
     cost_points: Mapped[int] = mapped_column(Integer)
     code: Mapped[str] = mapped_column(String(12), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # Set once, when staff hand the reward over; a code can never be collected twice
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    used_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
     reward: Mapped[Reward] = relationship()
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
 
 
 class Pickup(Base):

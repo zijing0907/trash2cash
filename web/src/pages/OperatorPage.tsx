@@ -6,9 +6,9 @@ import { BinBadge } from "../components/BinBadge";
 import { RoleGate } from "../components/RoleGate";
 import { Button, ErrorNote, Spinner } from "../components/ui";
 import { api } from "../lib/api";
-import { kg, pts, time } from "../lib/format";
+import { dateTime, kg, pts, time } from "../lib/format";
 import { useMe } from "../lib/hooks";
-import type { DepositOut, ResidentLookup } from "../lib/types";
+import type { DepositOut, ResidentLookup, Voucher } from "../lib/types";
 
 export function OperatorPage() {
   return (
@@ -58,7 +58,10 @@ function WeighIn() {
       </header>
       <div className="weigh-grid">
         <Counter key={point.id} pointId={point.id} pointStreams={point.streams} streams={streams.data!} isAdmin={isAdmin} />
-        <Today pointId={point.id} isAdmin={isAdmin} />
+        <div className="side-stack">
+          <VoucherCheck />
+          <Today pointId={point.id} isAdmin={isAdmin} />
+        </div>
       </div>
     </div>
   );
@@ -222,6 +225,84 @@ function Counter(props: {
             </Button>
           </div>
         </form>
+      )}
+    </section>
+  );
+}
+
+/** A resident shows a voucher code: check what it is for, then hand the reward over (once). */
+function VoucherCheck() {
+  const [code, setCode] = useState("");
+  const [found, setFound] = useState<Voucher | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const look = useMutation({ mutationFn: (c: string) => api.voucher(c), onSuccess: setFound });
+  const collect = useMutation({
+    mutationFn: (c: string) => api.collectVoucher(c),
+    onSuccess: (v) => {
+      setFound(v);
+      setConfirming(false);
+    },
+  });
+  return (
+    <section aria-labelledby="voucher-head">
+      <h2 id="voucher-head" className="side-head">
+        Collect a voucher
+      </h2>
+      <form
+        className="slip__find voucher-find"
+        onSubmit={(e: FormEvent) => {
+          e.preventDefault();
+          setFound(null);
+          collect.reset();
+          if (code.trim()) look.mutate(code);
+        }}
+      >
+        <label className="field">
+          <span>Voucher code</span>
+          <input
+            className="input"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="For example 9HXW-2RTD"
+            autoCapitalize="characters"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </label>
+        <Button type="submit" variant="secondary" busy={look.isPending}>
+          Check
+        </Button>
+      </form>
+      {look.error && <ErrorNote>{look.error.message}</ErrorNote>}
+      {found && (
+        <div className="voucher-found" aria-live="polite">
+          <p className="table__main">{found.reward_name}</p>
+          <p className="muted small-print">
+            For {found.member_name} ({found.member_code}), claimed {dateTime(found.created_at)}
+          </p>
+          {found.used_at ? (
+            <p className={collect.isSuccess ? "voucher-state voucher-state--done" : "voucher-state"}>
+              {collect.isSuccess ? <Check size={16} aria-hidden /> : null}
+              {collect.isSuccess ? "Handed over. " : "Already collected "}
+              {dateTime(found.used_at)}
+            </p>
+          ) : confirming ? (
+            <span className="confirm-inline">
+              <span>Hand it over now?</span>
+              <Button small onClick={() => collect.mutate(found.code)} busy={collect.isPending}>
+                Mark collected
+              </Button>
+              <Button small variant="quiet" onClick={() => setConfirming(false)}>
+                Cancel
+              </Button>
+            </span>
+          ) : (
+            <Button small variant="secondary" onClick={() => setConfirming(true)}>
+              Hand over
+            </Button>
+          )}
+          {collect.error && <ErrorNote>{collect.error.message}</ErrorNote>}
+        </div>
       )}
     </section>
   );

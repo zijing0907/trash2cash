@@ -129,6 +129,23 @@ export interface Redemption {
   cost_points: number;
   code: string;
   created_at: string;
+  used_at: string | null;
+}
+
+export interface Voucher extends Redemption {
+  member_name: string;
+  member_code: string;
+}
+
+export interface DropPointAdmin {
+  id: number;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  active: boolean;
+  is_demo: boolean;
+  bins: { container_id: number; stream_key: string; capacity_kg: number }[];
 }
 
 export interface ResidentLookup {

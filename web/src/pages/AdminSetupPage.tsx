@@ -7,7 +7,8 @@ import { RoleGate } from "../components/RoleGate";
 import { Button, ErrorNote, Spinner } from "../components/ui";
 import { api } from "../lib/api";
 import { pts } from "../lib/format";
-import type { DropPoint, Reward, Staff, Stream } from "../lib/types";
+import { parseCoords } from "../lib/geo";
+import type { DropPoint, DropPointAdmin, Reward, Staff, Stream } from "../lib/types";
 
 export function AdminSetupPage() {
   return (
@@ -19,11 +20,143 @@ export function AdminSetupPage() {
             Back to the pickup board
           </Link>
         </header>
+        <Points />
         <Rates />
         <Rewards />
         <StaffRoles />
       </div>
     </RoleGate>
+  );
+}
+
+const NO_POINT = { name: "", address: "", coords: "", active: true, bins: {} as Record<string, string> };
+
+function Points() {
+  const qc = useQueryClient();
+  const points = useQuery({ queryKey: ["admin", "points"], queryFn: api.adminPoints });
+  const streams = useQuery({ queryKey: ["streams"], queryFn: api.streams });
+  const [editing, setEditing] = useState<DropPointAdmin | null>(null);
+  const [form, setForm] = useState(NO_POINT);
+  const [problem, setProblem] = useState<string | null>(null);
+  const save = useMutation({
+    mutationFn: (body: Parameters<typeof api.savePoint>[1]) => api.savePoint(editing?.id ?? null, body),
+    onSuccess: () => {
+      setEditing(null);
+      setForm(NO_POINT);
+      for (const key of [["admin", "points"], ["drop-points"], ["admin", "board"]]) void qc.invalidateQueries({ queryKey: key });
+    },
+  });
+  function edit(p: DropPointAdmin) {
+    setEditing(p);
+    setProblem(null);
+    setForm({ name: p.name, address: p.address, coords: `${p.lat}, ${p.lng}`, active: p.active,
+              bins: Object.fromEntries(p.bins.map((b) => [b.stream_key, String(b.capacity_kg)])) });  // prettier-ignore
+  }
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    const coords = parseCoords(form.coords);
+    const bins = Object.entries(form.bins)
+      .filter(([, v]) => v.trim() !== "")
+      .map(([stream_key, v]) => ({ stream_key, capacity_kg: Math.round(Number(v)) }));
+    if (!coords) return setProblem("Paste the map position as two numbers, latitude then longitude, e.g. 4.3375, 101.1436.");
+    if (!bins.length) return setProblem("Give at least one bin a size in kg.");
+    if (bins.some((b) => !(b.capacity_kg > 0))) return setProblem("Bin sizes must be whole numbers of kg above 0.");
+    setProblem(null);
+    save.mutate({ name: form.name.trim(), address: form.address.trim(), lat: coords[0], lng: coords[1], active: form.active, bins });
+  }
+  return (
+    <section className="account__section" aria-labelledby="points-head">
+      <h2 id="points-head">Drop-off points</h2>
+      {points.isPending && <Spinner label="Loading drop-off points…" />}
+      {points.error && <ErrorNote>{points.error.message}</ErrorNote>}
+      {points.data && points.data.length === 0 && <p className="empty">No drop-off points yet. Add the first one below.</p>}
+      {points.data && points.data.length > 0 && (
+        <table className="table">
+          <thead>
+            <tr>
+              <th scope="col">Drop-off point</th>
+              <th scope="col">Bins and sizes</th>
+              <th scope="col">Open</th>
+              <th scope="col">
+                <span className="visually-hidden">Edit</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {points.data.map((p) => (
+              <tr key={p.id}>
+                <td>
+                  <span className="table__main">{p.name}</span>
+                  <span className="muted small-print">
+                    {p.address}
+                    {p.is_demo && ", sample"}
+                  </span>
+                </td>
+                <td>
+                  <span className="table__lines">
+                    {p.bins.map((b) => (
+                      <span key={b.stream_key}>
+                        <BinBadge bin={b.stream_key} /> {b.capacity_kg}&nbsp;kg
+                      </span>
+                    ))}
+                  </span>
+                </td>
+                <td>{p.active ? "Open" : "Closed"}</td>
+                <td>
+                  <Button small variant="quiet" onClick={() => edit(p)}>
+                    Edit
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <form className="form form--grid" onSubmit={submit} noValidate>
+        <h3>{editing ? `Edit ${editing.name}` : "Add a drop-off point"}</h3>
+        <label className="field">
+          <span>Name</span>
+          <input className="input" required maxLength={80} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        </label>
+        <label className="field">
+          <span>Address or where to find it</span>
+          <input className="input" required maxLength={200} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+        </label>
+        <label className="field">
+          <span>Map position (latitude, longitude)</span>
+          <input className="input" inputMode="decimal" value={form.coords} placeholder="4.3375, 101.1436"
+                 onChange={(e) => setForm({ ...form, coords: e.target.value })} />
+          <small className="field__help">In Google Maps or OpenStreetMap, right-click the place and copy its coordinates.</small>
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} />
+          Open (residents can see it and staff can weigh deposits there)
+        </label>
+        <fieldset className="bins-fieldset">
+          <legend>Bins it holds, with their size in kg (leave empty for none)</legend>
+          {streams.data?.map((st) => (
+            <label key={st.key} className="bin-size">
+              <BinBadge bin={st.key} />
+              <span className="muted small-print">{st.name}</span>
+              <input className="input input--num" inputMode="numeric" value={form.bins[st.key] ?? ""}
+                     onChange={(e) => setForm({ ...form, bins: { ...form.bins, [st.key]: e.target.value } })}
+                     aria-label={`Size of the ${st.name.toLowerCase()} bin in kg`} placeholder="kg" />
+            </label>
+          ))}
+        </fieldset>
+        {(problem || save.error) && <ErrorNote>{problem ?? save.error!.message}</ErrorNote>}
+        <div className="actions">
+          <Button type="submit" busy={save.isPending}>
+            {editing ? "Save drop-off point" : "Add drop-off point"}
+          </Button>
+          {editing && (
+            <Button variant="quiet" onClick={() => { setEditing(null); setForm(NO_POINT); setProblem(null); }}>
+              Cancel
+            </Button>
+          )}
+        </div>
+      </form>
+    </section>
   );
 }
 

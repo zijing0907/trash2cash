@@ -37,7 +37,9 @@ serve the web app and proxy `/api` here (no CORS needed).
 | `GET /api/me/card`, `GET /api/me/points`, `GET /api/me/redemptions` | logged in | Member code and balance, the points ledger, vouchers |
 | `GET /api/rewards`, `POST /api/rewards/{id}/redeem` | anyone / logged in | Rewards; redeeming locks the user's row, then checks balance and stock |
 | `GET /api/operator/residents/{code}`, `POST /api/operator/deposits`, `GET /api/operator/deposits` | operator, admin | Find a member, record weighed bins (points added in the same commit), today's deposits |
+| `GET /api/operator/vouchers/{code}`, `POST /api/operator/vouchers/{code}/collect` | operator, admin | Check a voucher; hand the reward over (a conditional update, so a code is collected once) |
 | `GET /api/admin/board`, `POST /api/admin/pickups` | admin | Fill, forecast and today's run for every bin; record emptied bins |
+| `GET/POST/PUT /api/admin/points` | admin | Drop-off points: name, address, map position, bins and sizes, open or closed |
 | `PUT /api/admin/streams/{key}`, `GET/POST/PUT /api/admin/rewards`, `GET /api/admin/staff`, `PUT /api/admin/users/{id}/role` | admin | Rates and prices, rewards, roles |
 
 Interactive docs: http://localhost:8000/api/docs.
